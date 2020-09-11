@@ -37,9 +37,9 @@ jobs:
     - name: Test with nose
       run: |
         nosetests -v -a '!parallel' -a n_procs=all -a n_procs=1 --nologcapture --with-coverage --cover-package=parapint --with-doctest --doctest-extension=.rst  --cover-xml parapint
-        mpirun -np 2 --oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=2 --with-coverage --cover-package=parapint --cover-xml parapint
-        mpirun -np 3 --oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=3 --with-coverage --cover-package=parapint --cover-xml parapint
-        mpirun -np 4 --oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=4 --with-coverage --cover-package=parapint --cover-xml parapint
+        mpirun -np 2 -oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=2 --with-coverage --cover-package=parapint --cover-xml parapint
+        mpirun -np 3 -oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=3 --with-coverage --cover-package=parapint --cover-xml parapint
+        mpirun -np 4 -oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=4 --with-coverage --cover-package=parapint --cover-xml parapint
         coverage report -m
     - name: upload coverage
       uses: codecov/codecov-action@v1
