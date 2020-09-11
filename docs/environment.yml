@@ -10,3 +10,4 @@ dependencies:
     - openmpi
     - mpi4py
     - pymumps
+    - numpydoc
