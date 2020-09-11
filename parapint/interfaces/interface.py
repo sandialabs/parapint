@@ -1,5 +1,4 @@
-from abc import ABCMeta, abstractmethod
-import six
+from abc import ABC, abstractmethod
 from pyomo.contrib.pynumero.interfaces import pyomo_nlp, ampl_nlp
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 import numpy as np
@@ -7,7 +6,7 @@ import scipy.sparse
 from pyutilib.misc.timing import HierarchicalTimer
 
 
-class BaseInteriorPointInterface(six.with_metaclass(ABCMeta, object)):
+class BaseInteriorPointInterface(ABC):
     """
     A base class for interfacing with Parapint's interior point algorithm. This class is
     responsible for function evaluations and for building the KKT system (matrix and rhs).

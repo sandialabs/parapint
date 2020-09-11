@@ -1,0 +1,48 @@
+name: main_ci
+
+on:
+  push:
+  pull_request:
+  schedule:
+  - cron: "0 2 * * 1-5"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 3
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+    steps:
+    - uses: actions/checkout@v1
+    - name: setup conda
+      uses: s-weigand/setup-conda@v1
+      with:
+        update-conda: true
+        python-version: ${{ matrix.python-version }}
+        conda-channels: anaconda, conda-forge
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy scipy nose codecov coverage==4.5.4
+        conda install openmpi pymumps ipopt --no-update-deps
+        pip install mpi4py
+        pip install git+https://github.com/pyutilib/pyutilib.git
+        git clone https://github.com/pyomo/pyomo.git
+        cd pyomo/
+        python setup.py develop
+        pyomo download-extensions
+        pyomo build-extensions
+        cd ../
+        python setup.py develop
+    - name: Test with nose
+      run: |
+        nosetests -v -a '!parallel' -a n_procs=all -a n_procs=1 --nologcapture --with-coverage --cover-package=parapint --with-doctest --doctest-extension=.rst  --cover-xml parapint
+        mpirun -np 2 -oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=2 --with-coverage --cover-package=parapint --cover-xml parapint
+        mpirun -np 3 -oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=3 --with-coverage --cover-package=parapint --cover-xml parapint
+        mpirun -np 4 -oversubscribe nosetests -a parallel,n_procs=all -a parallel,n_procs=4 --with-coverage --cover-package=parapint --cover-xml parapint
+        coverage report -m
+    - name: upload coverage
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}

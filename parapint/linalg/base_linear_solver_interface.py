@@ -1,9 +1,8 @@
-from abc import ABCMeta, abstractmethod
-import six
+from abc import ABC, abstractmethod
 import logging
 
 
-class LinearSolverInterface(six.with_metaclass(ABCMeta, object)):
+class LinearSolverInterface(ABC):
     """
     This is the base class for linear solvers that work with the
     interior point algorithm. Derived classes must implement the
