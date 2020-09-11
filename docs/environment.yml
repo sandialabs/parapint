@@ -1,0 +1,10 @@
+name: parapint
+dependencies:
+    - python=3.7
+    - numpy
+    - scipy
+    - pyutilib
+    - pyomo
+    - openmpi
+    - mpi4py
+    - pymumps
