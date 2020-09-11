@@ -27,9 +27,12 @@ jobs:
         pip install numpy scipy nose codecov coverage==4.5.4
         conda install mpi4py mumps --no-update-deps
         pip install git+https://github.com/pyutilib/pyutilib.git
-        pip install git+https://github.com/pyomo/pyomo.git
+        git clone https://github.com/pyomo/pyomo.git
+        cd pyomo/
+        python setup.py develop
         pyomo download-extensions
         pyomo build-extensions
+        cd ../
         python setup.py develop
     - name: Test with nose
       run: |
