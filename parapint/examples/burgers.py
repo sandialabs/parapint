@@ -14,7 +14,7 @@ import argparse
 """
 Run this example with, e.g., 
 
-mpirun -np 4 python -m mpi4py burgers.py --nfe_x 50 --nfe_t 200 --nblocks 4 --plot
+mpirun -np 4 python -m mpi4py burgers.py --nfe_x 50 --nfe_t 200 --nblocks 4
 
 If you run it with the --plot, make sure you don't use too many finite elements, or it will take forever to plot.
 """
@@ -27,15 +27,24 @@ if rank == 0:
     logging.basicConfig(level=logging.INFO)
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--nfe_x', type=int, required=True, help='number of finite elements for x')
-    parser.add_argument('--nfe_t', type=int, required=True, help='number of finite elements for t')
-    parser.add_argument('--nblocks', type=int, required=True, help='number of time blocks for schur complement')
-    parser.add_argument('--no_tee', action='store_false')
-    parser.add_argument('--plot', action='store_true')
-    args = parser.parse_args()
-    return args
+class Args(object):
+    def __init__(self):
+        self.nfe_x = 50
+        self.nfe_t = 200
+        self.nblocks = 4
+        self.plot = True
+
+    def parse_arguments(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--nfe_x', type=int, required=True, help='number of finite elements for x')
+        parser.add_argument('--nfe_t', type=int, required=True, help='number of finite elements for t')
+        parser.add_argument('--nblocks', type=int, required=True, help='number of time blocks for schur complement')
+        parser.add_argument('--no_plot', action='store_true')
+        args = parser.parse_args()
+        self.nfe_x = args.nfe_x
+        self.nfe_t = args.nfe_t
+        self.nblocks = args.nblocks
+        self.plot = not args.no_plot
 
 
 class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPointInterface):
@@ -243,16 +252,15 @@ class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPoin
             plt.close()
 
 
-def main():
-    args = parse_arguments()
+def main(args, subproblem_solver_class, subproblem_solver_options):
     interface = BurgersInterface(start_t=0,
                                  end_t=1,
                                  num_time_blocks=args.nblocks,
                                  nfe_t=args.nfe_t,
                                  nfe_x=args.nfe_x)
     linear_solver = parapint.linalg.MPISchurComplementLinearSolver(
-        subproblem_solvers={ndx: parapint.linalg.InteriorPointMA27Interface(cntl_options={1: 1e-6}) for ndx in range(args.nblocks)},
-        schur_complement_solver=parapint.linalg.InteriorPointMA27Interface(cntl_options={1: 1e-6}))
+        subproblem_solvers={ndx: subproblem_solver_class(**subproblem_solver_options) for ndx in range(args.nblocks)},
+        schur_complement_solver=subproblem_solver_class(**subproblem_solver_options))
     opt = parapint.interior_point.InteriorPointSolver(linear_solver)
     status = opt.solve(interface)
     assert status == parapint.interior_point.InteriorPointStatus.optimal
@@ -261,6 +269,13 @@ def main():
     if args.plot:
         interface.plot_results()
 
+    return interface
+
 
 if __name__ == '__main__':
-    main()
+    args = Args()
+    args.parse_arguments()
+    # cntl[1] is the MA27 pivot tolerance
+    main(args=args,
+         subproblem_solver_class=parapint.linalg.InteriorPointMA27Interface,
+         subproblem_solver_options={'cntl_options': {1: 1e-6}})
