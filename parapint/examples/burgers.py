@@ -33,6 +33,7 @@ class Args(object):
         self.nfe_t = 200
         self.nblocks = 4
         self.plot = True
+        self.show_plot = True
 
     def parse_arguments(self):
         parser = argparse.ArgumentParser()
@@ -40,11 +41,13 @@ class Args(object):
         parser.add_argument('--nfe_t', type=int, required=True, help='number of finite elements for t')
         parser.add_argument('--nblocks', type=int, required=True, help='number of time blocks for schur complement')
         parser.add_argument('--no_plot', action='store_true')
+        parser.add_argument('--no_show_plot', action='store_true')
         args = parser.parse_args()
         self.nfe_x = args.nfe_x
         self.nfe_t = args.nfe_t
         self.nblocks = args.nblocks
         self.plot = not args.no_plot
+        self.show_plot = not args.no_show_plot
 
 
 class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPointInterface):
@@ -172,7 +175,7 @@ class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPoin
                 ([m.y[x, start_t] for x in sorted(m.x) if x not in {0, 1}]),
                 ([m.y[x, end_t] for x in sorted(m.x) if x not in {0, 1}]))
 
-    def plot_results(self):
+    def plot_results(self, show_plot=True):
         y_pts = list()
         u_pts = list()
         for block_ndx in self.local_block_indices:
@@ -238,7 +241,8 @@ class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPoin
             ax.set_xlabel('x')
             ax.set_ylabel('t')
             ax.set_zlabel('y')
-            plt.show()
+            if show_plot:
+                plt.show()
             plt.close()
 
             fig = plt.figure()
@@ -248,7 +252,8 @@ class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPoin
             ax.set_xlabel('x')
             ax.set_ylabel('t')
             ax.set_zlabel('u')
-            plt.show()
+            if show_plot:
+                plt.show()
             plt.close()
 
 
@@ -267,7 +272,7 @@ def main(args, subproblem_solver_class, subproblem_solver_options):
     interface.load_primals_into_pyomo_model()
 
     if args.plot:
-        interface.plot_results()
+        interface.plot_results(show_plot=args.show_plot)
 
     return interface
 

@@ -44,7 +44,8 @@ class TestExamples(unittest.TestCase):
         args.nblocks = 4
         args.nfe_x = 10
         args.nfe_t = 12
-        args.plot = False
+        args.plot = True
+        args.show_plot = False
         interface = examples.burgers.main(args=args,
                                           subproblem_solver_class=parapint.linalg.ScipyInterface,
                                           subproblem_solver_options={'compute_inertia': True})
