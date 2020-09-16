@@ -19,7 +19,7 @@ Interface Requirements
 """
 
 
-ip_logger = logging.getLogger('interior_point')
+ip_logger = logging.getLogger('algorithms')
 
 
 class InteriorPointStatus(enum.Enum):
@@ -132,7 +132,7 @@ class InteriorPointSolver(object):
         self.max_reg_iter = 6
         self.reg_factor_increase = 100
 
-        self.logger = logging.getLogger('interior_point')
+        self.logger = logging.getLogger('algorithms')
         self._iter = 0
         self.factorization_context = FactorizationContext(self.logger)
 

@@ -44,7 +44,7 @@ class TestRegularization(unittest.TestCase):
     def _test_regularization(self, linear_solver):
         m = make_model()
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.interior_point.InteriorPointSolver(linear_solver)
+        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
         ip_solver.set_interface(interface)
 
         interface.set_barrier_parameter(1e-1)
@@ -81,10 +81,10 @@ class TestRegularization(unittest.TestCase):
     def _test_regularization_2(self, linear_solver):
         m = make_model_2()
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.interior_point.InteriorPointSolver(linear_solver)
+        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
 
         status = ip_solver.solve(interface)
-        self.assertEqual(status, parapint.interior_point.InteriorPointStatus.optimal)
+        self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         interface.load_primals_into_pyomo_model()
         self.assertAlmostEqual(m.x.value, 1)
         self.assertAlmostEqual(m.y.value, pe.exp(-1))
