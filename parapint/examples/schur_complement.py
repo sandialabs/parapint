@@ -22,7 +22,7 @@ Using trapezoid rule for integral and implicit euler for differential equation
 
 To run the example, use
 
-mpirun -np 3 python -m mpi4py ex1.py
+mpirun -np 3 python -m mpi4py schur_complement.py
 """
 
 
@@ -142,7 +142,7 @@ class Problem(parapint.interfaces.MPIDynamicSchurComplementInteriorPointInterfac
         return m, start_states, end_states
 
 
-def main():
+def main(subproblem_solver_class, subproblem_solver_options, show_plot=True):
     t0: int = 0
     delta_t: int = 1
     num_finite_elements: int = 90
@@ -156,8 +156,8 @@ def main():
                         time_scale=time_scale,
                         num_time_blocks=num_time_blocks)
     linear_solver = parapint.linalg.MPISchurComplementLinearSolver(
-        subproblem_solvers={ndx: parapint.linalg.InteriorPointMA27Interface(cntl_options={1: 1e-6}) for ndx in range(num_time_blocks)},
-        schur_complement_solver=parapint.linalg.InteriorPointMA27Interface(cntl_options={1: 1e-6}))
+        subproblem_solvers={ndx: subproblem_solver_class(**subproblem_solver_options) for ndx in range(num_time_blocks)},
+        schur_complement_solver=subproblem_solver_class(**subproblem_solver_options))
     opt = parapint.interior_point.InteriorPointSolver(linear_solver)
     status = opt.solve(interface)
     assert status == parapint.interior_point.InteriorPointStatus.optimal
@@ -192,8 +192,14 @@ def main():
         plt.step(t_p, global_p, where='post', label='p(t)')
         plt.xlabel('t')
         plt.legend()
-        plt.show()
+        if show_plot:
+            plt.show()
+        plt.close()
+
+    return interface
 
 
 if __name__ == '__main__':
-    main()
+    # cntl[1] is the MA27 pivot tolerance
+    main(subproblem_solver_class=parapint.linalg.InteriorPointMA27Interface,
+         subproblem_solver_options={'cntl_options': {1: 1e-6}})

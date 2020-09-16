@@ -39,7 +39,7 @@ class MumpsInterface(LinearSolverInterface):
         self._dim = None
         self.logger = self.getLogger()
         self.log_header(include_error=self.log_error)
-        self._prev_allocation = None
+        self._prev_allocation = 0
 
     def do_symbolic_factorization(self, matrix, raise_on_error=True):
         if not isspmatrix_coo(matrix):
