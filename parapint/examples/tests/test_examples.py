@@ -35,17 +35,16 @@ class TestExamples(unittest.TestCase):
             self.assertAlmostEqual(interface.pyomo_model(ndx=2).p[70].value, 1.99059057528143)
             self.assertAlmostEqual(interface.pyomo_model(ndx=2).p[80].value, 1.7102013685364827)
 
-    @attr(parallel=True, speed='slow', n_procs=2)
+    @attr(parallel=True, speed='slow', n_procs='all')
     def test_burgers(self):
         comm: MPI.Comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
-        self.assertEqual(size, 2)
         args = examples.burgers.Args()
-        args.nblocks = 2
-        args.nfe_x = 20
-        args.nfe_t = 50
+        args.nblocks = 4
+        args.nfe_x = 10
+        args.nfe_t = 12
         args.plot = False
         interface = examples.burgers.main(args=args,
-                                          subproblem_solver_class=parapint.linalg.MumpsInterface,
-                                          subproblem_solver_options={})
+                                          subproblem_solver_class=parapint.linalg.ScipyInterface,
+                                          subproblem_solver_options={'compute_inertia': True})
