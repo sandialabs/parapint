@@ -10,4 +10,5 @@ API documentation
 .. toctree::
 
    parapint.linalg
+   parapint.algorithms
    parapint.interfaces

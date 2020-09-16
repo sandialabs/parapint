@@ -4,11 +4,11 @@ from pyomo.common.dependencies import attempt_import
 import numpy as np
 from pyomo.contrib.pynumero.asl import AmplInterface
 import parapint
-from parapint.interior_point.interior_point import (process_init,
-                                                   process_init_duals_lb,
-                                                   process_init_duals_ub,
-                                                   _fraction_to_the_boundary_helper_lb,
-                                                   _fraction_to_the_boundary_helper_ub)
+from parapint.algorithms.interior_point import (process_init,
+                                                process_init_duals_lb,
+                                                process_init_duals_ub,
+                                                _fraction_to_the_boundary_helper_lb,
+                                                _fraction_to_the_boundary_helper_ub)
 from pyomo.contrib.pynumero.linalg.ma27 import MA27Interface
 ma27_available = MA27Interface.available()
 mumps, mumps_available = attempt_import('mumps', 'Interior point requires mumps')
@@ -25,9 +25,9 @@ class TestSolveInteriorPoint(unittest.TestCase):
         m.c1 = pe.Constraint(expr=m.y == pe.exp(m.x))
         m.c2 = pe.Constraint(expr=m.y >= (m.x - 1)**2)
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.interior_point.InteriorPointSolver(linear_solver)
+        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
         status = ip_solver.solve(interface)
-        self.assertEqual(status, parapint.interior_point.InteriorPointStatus.optimal)
+        self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         x = interface.get_primals()
         duals_eq = interface.get_duals_eq()
         duals_ineq = interface.get_duals_ineq()
@@ -44,9 +44,9 @@ class TestSolveInteriorPoint(unittest.TestCase):
         m.x = pe.Var(bounds=(1, 4))
         m.obj = pe.Objective(expr=m.x**2)
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.interior_point.InteriorPointSolver(linear_solver)
+        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
         status = ip_solver.solve(interface)
-        self.assertEqual(status, parapint.interior_point.InteriorPointStatus.optimal)
+        self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         interface.load_primals_into_pyomo_model()
         self.assertAlmostEqual(m.x.value, 1)
 

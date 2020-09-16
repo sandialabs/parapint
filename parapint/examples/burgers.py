@@ -266,9 +266,9 @@ def main(args, subproblem_solver_class, subproblem_solver_options):
     linear_solver = parapint.linalg.MPISchurComplementLinearSolver(
         subproblem_solvers={ndx: subproblem_solver_class(**subproblem_solver_options) for ndx in range(args.nblocks)},
         schur_complement_solver=subproblem_solver_class(**subproblem_solver_options))
-    opt = parapint.interior_point.InteriorPointSolver(linear_solver)
+    opt = parapint.algorithms.InteriorPointSolver(linear_solver)
     status = opt.solve(interface)
-    assert status == parapint.interior_point.InteriorPointStatus.optimal
+    assert status == parapint.algorithms.InteriorPointStatus.optimal
     interface.load_primals_into_pyomo_model()
 
     if args.plot:

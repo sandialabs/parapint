@@ -19,7 +19,7 @@ class LinearSolverInterface(ABC):
 
     @classmethod
     def getLogger(cls):
-        name = 'interior_point.' + cls.getLoggerName()
+        name = 'algorithms.' + cls.getLoggerName()
         return logging.getLogger(name)
 
     @abstractmethod

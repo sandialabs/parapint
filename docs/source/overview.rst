@@ -15,9 +15,9 @@ from the Harwell Subroutine Library (HSL).
 
 Parapint is designed with three primary modules:
 
-  * The interior point algorithm. The interior point algorithm drives
-    the solution process and performs high level operations such as the
-    fraction-to-the boundary rule, inertia correction, etc. The
+  * The algorithms. The algorithms drive the solution process and
+    perform high level operations such as the fraction-to-the boundary
+    rule or inertia correction for the interior point algorithm. The
     interior point algorithm is designed to work with any
     :py:class:`~parapint.interfaces.interface.BaseInteriorPointInterface`
     and any

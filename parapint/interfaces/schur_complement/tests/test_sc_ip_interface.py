@@ -500,9 +500,9 @@ class TestSCIPInterfaceWithSolve(unittest.TestCase):
                             num_time_blocks=num_time_blocks,
                             with_bounds=with_bounds,
                             with_ineq=with_ineq)
-        opt = parapint.interior_point.InteriorPointSolver(linear_solver)
+        opt = parapint.algorithms.InteriorPointSolver(linear_solver)
         status = opt.solve(interface)
-        self.assertEqual(status, parapint.interior_point.InteriorPointStatus.optimal)
+        self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         interface.load_primals_into_pyomo_model()
         x = dict()
         p = dict()
