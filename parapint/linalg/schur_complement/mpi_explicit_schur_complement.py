@@ -128,11 +128,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
             raise ValueError('The block matrix provided is not square.')
         self.block_dim = nbrows
 
-        nrows, ncols = block_matrix.shape
-        if nrows != ncols:
-            raise ValueError('The block matrix provided is not square.')
-        self.dim = nrows
-
         # split up the blocks between ranks
         self.local_block_indices = list()
         self.block_indices_by_rank = {_rank: list() for _rank in range(size)}
