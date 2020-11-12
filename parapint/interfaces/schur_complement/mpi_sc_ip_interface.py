@@ -155,7 +155,7 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
                              nbcols=ncols,
                              rank_ownership=rank_ownership,
                              mpi_comm=self._comm,
-                             assert_correct_owners=False)
+                             assert_correct_owners=True)
         return mat
 
     def _build_mpi_block_vector(self, extra_block: bool = False) -> MPIBlockVector:
