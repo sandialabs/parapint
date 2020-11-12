@@ -28,7 +28,7 @@ jobs:
         conda install openmpi pymumps ipopt --no-update-deps
         pip install mpi4py
         pip install git+https://github.com/pyutilib/pyutilib.git
-        git clone https://github.com/pyomo/pyomo.git
+        git clone --single-branch --branch pynumero https://github.com/michaelbynum/pyomo.git
         cd pyomo/
         python setup.py develop
         pyomo download-extensions
