@@ -134,7 +134,6 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
         self._setup_block_vectors()
         self._setup_jacs()
         self._setup_kkt_and_rhs_structure()
-        self._broadcast()
 
     def _build_mpi_block_matrix(self, extra_row: bool = False, extra_col: bool = False) -> MPIBlockMatrix:
         if extra_row:
@@ -155,7 +154,8 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
         mat = MPIBlockMatrix(nbrows=nrows,
                              nbcols=ncols,
                              rank_ownership=rank_ownership,
-                             mpi_comm=self._comm)
+                             mpi_comm=self._comm,
+                             assert_correct_owners=False)
         return mat
 
     def _build_mpi_block_vector(self, extra_block: bool = False) -> MPIBlockVector:
@@ -168,7 +168,8 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
             rank_ownership[ndx] = self._ownership_map[ndx]
         vec = MPIBlockVector(nblocks=n,
                              rank_owner=rank_ownership,
-                             mpi_comm=self._comm)
+                             mpi_comm=self._comm,
+                             assert_correct_owners=False)
         return vec
 
     def _setup(self, start_t: float, end_t: float):
@@ -209,53 +210,6 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
         for ndx in range(self._num_time_blocks):
             self._link_forward_coupling_matrices[ndx] = self._build_link_forward_coupling_matrix(ndx)
             self._link_backward_coupling_matrices[ndx] = self._build_link_backward_coupling_matrix(ndx)
-
-    def _broadcast(self):
-        self._primals_lb.broadcast_block_sizes()
-        self._primals_ub.broadcast_block_sizes()
-
-        self._ineq_lb.broadcast_block_sizes()
-        self._ineq_ub.broadcast_block_sizes()
-
-        self._init_primals.broadcast_block_sizes()
-        self._primals.broadcast_block_sizes()
-        self._delta_primals.broadcast_block_sizes()
-
-        self._init_slacks.broadcast_block_sizes()
-        self._slacks.broadcast_block_sizes()
-        self._delta_slacks.broadcast_block_sizes()
-
-        self._init_duals_eq.broadcast_block_sizes()
-        self._duals_eq.broadcast_block_sizes()
-        self._delta_duals_eq.broadcast_block_sizes()
-
-        self._init_duals_ineq.broadcast_block_sizes()
-        self._duals_ineq.broadcast_block_sizes()
-        self._delta_duals_ineq.broadcast_block_sizes()
-
-        self._init_duals_primals_lb.broadcast_block_sizes()
-        self._duals_primals_lb.broadcast_block_sizes()
-        self._delta_duals_primals_lb.broadcast_block_sizes()
-
-        self._init_duals_primals_ub.broadcast_block_sizes()
-        self._duals_primals_ub.broadcast_block_sizes()
-        self._delta_duals_primals_ub.broadcast_block_sizes()
-
-        self._init_duals_slacks_lb.broadcast_block_sizes()
-        self._duals_slacks_lb.broadcast_block_sizes()
-        self._delta_duals_slacks_lb.broadcast_block_sizes()
-
-        self._init_duals_slacks_ub.broadcast_block_sizes()
-        self._duals_slacks_ub.broadcast_block_sizes()
-        self._delta_duals_slacks_ub.broadcast_block_sizes()
-
-        self._eq_resid.broadcast_block_sizes()
-        self._ineq_resid.broadcast_block_sizes()
-        self._grad_objective.broadcast_block_sizes()
-        self._jac_eq.broadcast_block_sizes()
-        self._jac_ineq.broadcast_block_sizes()
-        self._kkt.broadcast_block_sizes()
-        self._rhs.broadcast_block_sizes()
 
     def n_primals(self) -> int:
         res = sum(nlp.n_primals() for nlp in self._nlps.values())
