@@ -41,7 +41,7 @@ class MumpsInterface(LinearSolverInterface):
         self.log_header(include_error=self.log_error)
         self._prev_allocation = 0
 
-    def do_symbolic_factorization(self, matrix, raise_on_error=True):
+    def do_symbolic_factorization(self, matrix, raise_on_error=True, timer=None):
         if not isspmatrix_coo(matrix):
             matrix = matrix.tocoo()
         matrix = tril(matrix)
@@ -67,7 +67,7 @@ class MumpsInterface(LinearSolverInterface):
             res.status = LinearSolverStatus.warning
         return res
 
-    def do_numeric_factorization(self, matrix, raise_on_error=True):
+    def do_numeric_factorization(self, matrix, raise_on_error=True, timer=None):
         if not isspmatrix_coo(matrix):
             matrix = matrix.tocoo()
         matrix = tril(matrix)

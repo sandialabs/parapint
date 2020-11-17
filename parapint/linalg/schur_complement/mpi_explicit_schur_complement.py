@@ -8,7 +8,7 @@ from mpi4py import MPI
 import itertools
 from .explicit_schur_complement import _process_sub_results
 from typing import Dict, Optional
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 
 
 comm: MPI.Comm = MPI.COMM_WORLD
@@ -121,7 +121,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         """
         if timer is None:
             timer = HierarchicalTimer()
-        timer.start('symbolic')
 
         block_matrix = matrix
         nbrows, nbcols = block_matrix.bshape
@@ -156,7 +155,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         timer.start('sc_structure')
         self._get_sc_structure(block_matrix=block_matrix)
         timer.stop('sc_structure')
-        timer.stop('symbolic')
 
         return res
 
@@ -231,7 +229,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         """
         if timer is None:
             timer = HierarchicalTimer()
-        timer.start('numeric')
 
         self.block_matrix = block_matrix = matrix
 
@@ -298,7 +295,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         sub_res = self.schur_complement_solver.do_numeric_factorization(sc)
         _process_sub_results(res, sub_res)
         timer.stop('factor SC')
-        timer.stop('numeric')
         return res
 
     def do_back_solve(self, rhs, timer=None):

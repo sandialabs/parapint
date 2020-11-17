@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import time
 from parapint.linalg.results import LinearSolverStatus
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 import enum
 from parapint.interfaces.interface import BaseInteriorPointInterface
 from typing import Optional
@@ -525,11 +525,11 @@ def try_factorization_and_reallocation(kkt, linear_solver, reallocation_factor, 
         However, we first have to make sure the nonzero structure (and ordering of row and column arrays) 
         of the KKT matrix never changes. We have not had time to test this thoroughly, yet. 
         """
-        res = linear_solver.do_symbolic_factorization(matrix=kkt, raise_on_error=False)
+        res = linear_solver.do_symbolic_factorization(matrix=kkt, raise_on_error=False, timer=timer)
         timer.stop('symbolic')
         if res.status == LinearSolverStatus.successful:
             timer.start('numeric')
-            res = linear_solver.do_numeric_factorization(matrix=kkt, raise_on_error=False)
+            res = linear_solver.do_numeric_factorization(matrix=kkt, raise_on_error=False, timer=timer)
             timer.stop('numeric')
         status = res.status
         if status == LinearSolverStatus.not_enough_memory:

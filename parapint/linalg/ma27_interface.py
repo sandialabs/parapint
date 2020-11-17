@@ -3,6 +3,7 @@ from .results import LinearSolverStatus, LinearSolverResults
 from pyomo.contrib.pynumero.linalg.ma27 import MA27Interface
 from scipy.sparse import isspmatrix_coo, tril
 from pyomo.contrib.pynumero.sparse import BlockVector
+from pyomo.common.timing import HierarchicalTimer
 
 
 class InteriorPointMA27Interface(LinearSolverInterface):
@@ -48,7 +49,7 @@ class InteriorPointMA27Interface(LinearSolverInterface):
         self._dim = None
         self._num_status = None
 
-    def do_symbolic_factorization(self, matrix, raise_on_error=True):
+    def do_symbolic_factorization(self, matrix, raise_on_error=True, timer=None):
         """
         Perform symbolic factorization. This calls the MA27A/AD routines.
 
@@ -59,6 +60,7 @@ class InteriorPointMA27Interface(LinearSolverInterface):
         raise_on_error: bool
             If False, an error will not be raised if an error occurs during symbolic factorization. Instead the
             status attribute of the results object will indicate an error ocurred.
+        timer: HierarchicalTimer
 
         Returns
         -------
@@ -89,7 +91,7 @@ class InteriorPointMA27Interface(LinearSolverInterface):
                 res.status = LinearSolverStatus.error
         return res
 
-    def do_numeric_factorization(self, matrix, raise_on_error=True):
+    def do_numeric_factorization(self, matrix, raise_on_error=True, timer=None):
         """
         Perform numeric factorization. This calls the MA27B/BD routines.
 
@@ -100,6 +102,7 @@ class InteriorPointMA27Interface(LinearSolverInterface):
         raise_on_error: bool
             If False, an error will not be raised if an error occurs during numeric factorization. Instead the
             status attribute of the results object will indicate an error ocurred.
+        timer: HierarchicalTimer
 
         Returns
         -------

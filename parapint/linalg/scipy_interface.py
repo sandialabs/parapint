@@ -17,12 +17,12 @@ class ScipyInterface(LinearSolverInterface):
         self.logger = logging.getLogger('scipy')
         self.logger.propagate = False
 
-    def do_symbolic_factorization(self, matrix, raise_on_error=True):
+    def do_symbolic_factorization(self, matrix, raise_on_error=True, timer=None):
         res = LinearSolverResults()
         res.status = LinearSolverStatus.successful
         return res
 
-    def do_numeric_factorization(self, matrix, raise_on_error=True):
+    def do_numeric_factorization(self, matrix, raise_on_error=True, timer=None):
         if not isspmatrix_csc(matrix):
             matrix = matrix.tocsc()
         res = LinearSolverResults()
