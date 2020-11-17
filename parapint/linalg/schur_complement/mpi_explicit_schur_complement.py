@@ -175,10 +175,12 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         comm.Allreduce(tmp_num_nonzero_rows, num_nonzero_rows)
 
         sc_nnz = 0
+        local_block_indices_set = set(self.local_block_indices)
         for block_ndx in range(self.block_dim - 1):
-            border_matrix = self.border_matrices[block_ndx]
-            border_matrix.sc_data_offset = sc_nnz
-            sc_nnz += border_matrix.num_nonzero_rows**2
+            if block_ndx in local_block_indices_set:
+                border_matrix = self.border_matrices[block_ndx]
+                border_matrix.sc_data_offset = sc_nnz
+            sc_nnz += num_nonzero_rows[block_ndx]**2
 
         sc_row = np.zeros(sc_nnz, dtype=np.int)
         sc_col = np.zeros(sc_nnz, dtype=np.int)
