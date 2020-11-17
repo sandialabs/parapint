@@ -1,6 +1,5 @@
 import unittest
 import parapint
-from parapint.linalg.schur_complement.mpi_explicit_schur_complement import _get_block_ndx_to_nonzero_rows
 from nose.plugins.attrib import attr
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 from pyomo.contrib.pynumero.sparse.mpi_block_matrix import MPIBlockMatrix
@@ -112,34 +111,3 @@ class TestSchurComplement(unittest.TestCase):
         sc_solver.do_numeric_factorization(A)
         x2 = sc_solver.do_back_solve(rhs)
         self.assertTrue(np.allclose(x1, x2.make_local_copy().flatten()))
-
-
-class TestHelperFunctions(unittest.TestCase):
-    @attr(parallel=True, speed='fast', n_procs=3)
-    def test_get_block_ndx_to_nonzero_rows_3_procs(self):
-        self.assertEqual(size, 3)
-        block_indices_by_rank = dict()
-        block_indices_by_rank[0] = [0, 1, 3]
-        block_indices_by_rank[1] = [2, 4]
-        block_indices_by_rank[2] = [5, 6]
-
-        if rank == 0:
-            nonzero_rows = [0, 1, 3, 8, 1, 2, 6, 0, 5]
-            n_entries_per_block = [4, 3, 2]
-        elif rank == 1:
-            nonzero_rows = [1, 2, 0, 3, 9]
-            n_entries_per_block = [2, 3]
-        else:
-            nonzero_rows = [8, 7]
-            n_entries_per_block = [1, 1]
-
-        block_ndx_to_nonzero_rows = _get_block_ndx_to_nonzero_rows(block_indices_by_rank,
-                                                                   nonzero_rows,
-                                                                   n_entries_per_block)
-        self.assertEqual(list(block_ndx_to_nonzero_rows[0]), [0, 1, 3, 8])
-        self.assertEqual(list(block_ndx_to_nonzero_rows[1]), [1, 2, 6])
-        self.assertEqual(list(block_ndx_to_nonzero_rows[3]), [0, 5])
-        self.assertEqual(list(block_ndx_to_nonzero_rows[2]), [1, 2])
-        self.assertEqual(list(block_ndx_to_nonzero_rows[4]), [0, 3, 9])
-        self.assertEqual(list(block_ndx_to_nonzero_rows[5]), [8])
-        self.assertEqual(list(block_ndx_to_nonzero_rows[6]), [7])
