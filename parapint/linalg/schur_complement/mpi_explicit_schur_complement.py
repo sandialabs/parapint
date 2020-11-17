@@ -280,10 +280,16 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                     _rhs[col] -= val
 
         timer.start('communicate')
+        timer.start('zeros')
         sc = np.zeros(self.schur_complement.data.size, dtype=np.double)
+        timer.stop('zeros')
+        timer.start('Allreduce')
         comm.Allreduce(self.schur_complement.data, sc)
+        timer.stop('Allreduce')
         self.schur_complement.data = sc
-        sc = self.schur_complement + block_matrix.get_block(self.block_dim-1, self.block_dim-1)
+        timer.start('add')
+        sc = self.schur_complement + block_matrix.get_block(self.block_dim-1, self.block_dim-1).tocoo()
+        timer.stop('add')
         timer.stop('communicate')
         timer.stop('form SC')
 
