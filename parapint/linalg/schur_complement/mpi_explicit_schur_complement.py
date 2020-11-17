@@ -182,22 +182,43 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         block_ndx_to_nonzero_rows = _get_block_ndx_to_nonzero_rows(block_indices_by_rank=self.block_indices_by_rank,
                                                                    nonzero_rows=nonzero_rows,
                                                                    n_entries_per_block=n_entries_per_block)
-        sc_row = list()
-        sc_col = list()
+        sc_dim = block_matrix.get_row_size(self.block_dim-1)
+        sc_ndx_start = [0]
         coordinate_to_value_ndx_map = dict()
-        value_ndx = 0
+        num_nonzero_rows = list()
+        total_nonzeros = 0
         for block_ndx in range(self.block_dim - 1):
             nonzero_rows = block_ndx_to_nonzero_rows[block_ndx]
-            for _row, _col in itertools.product(nonzero_rows, nonzero_rows):
-                if (_row, _col) not in coordinate_to_value_ndx_map:
-                    sc_row.append(_row)
-                    sc_col.append(_col)
-                    coordinate_to_value_ndx_map[(_row, _col)] = value_ndx
-                    value_ndx += 1
+            nnz_rows = len(nonzero_rows)
+            coordinate_to_value_ndx_map[block_ndx] = dict()
+            num_nonzero_rows.append(nnz_rows)
+            total_nonzeros += nnz_rows**2
+            if block_ndx < self.block_dim - 1:
+                sc_ndx_start.append(total_nonzeros)
+
+        sc_row = np.zeros(total_nonzeros, dtype=np.int)
+        sc_col = np.zeros(total_nonzeros, dtype=np.int)
+        for block_ndx in self.local_block_indices:
+            nonzero_rows = block_ndx_to_nonzero_rows[block_ndx]
+            for i, _row in enumerate(nonzero_rows):
+                coordinate_to_value_ndx_map[block_ndx][_row] = i
+                start = sc_ndx_start[block_ndx] + i*num_nonzero_rows[block_ndx]
+                end = start + num_nonzero_rows[block_ndx]
+                sc_row[start:end] = _row
+                _slice = np.arange(sc_ndx_start[block_ndx] + i,
+                                   sc_ndx_start[block_ndx] + num_nonzero_rows[block_ndx]**2,
+                                   num_nonzero_rows[block_ndx])
+                sc_col[_slice] = _row
+        global_row = np.zeros(total_nonzeros, dtype=np.int)
+        global_col = np.zeros(total_nonzeros, dtype=np.int)
+        comm.Allreduce(sc_row, global_row)
+        comm.Allreduce(sc_col, global_col)
         sc_values = np.zeros(len(sc_row), dtype=np.double)
-        sc_dim = block_matrix.get_row_size(self.block_dim-1)
-        self.schur_complement = coo_matrix((sc_values, (sc_row, sc_col)), shape=(sc_dim, sc_dim))
+        self.schur_complement = coo_matrix((sc_values, (global_row, global_col)), shape=(sc_dim, sc_dim))
         self.sc_coordinate_to_value_ndx_map = coordinate_to_value_ndx_map
+        self.sc_ndx_start = sc_ndx_start
+        self.num_nonzero_rows = num_nonzero_rows
+        self.block_ndx_to_nonzero_rows = block_ndx_to_nonzero_rows
 
     def do_numeric_factorization(self,
                                  matrix: MPIBlockMatrix,
@@ -256,6 +277,8 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         #     indptr contains the number of nonzeros in the row
         self.schur_complement.data = np.zeros(self.schur_complement.data.size, dtype=np.double)
         for ndx in self.local_block_indices:
+            _slice = (self.sc_ndx_start[ndx] +
+                      np.arange(self.num_nonzero_rows[ndx], dtype=np.int) * self.num_nonzero_rows[ndx])
             A = block_matrix.get_block(self.block_dim-1, ndx).tocsr()
             _rhs = np.zeros(A.shape[1], dtype=np.double)
             solver = self.subproblem_solvers[ndx]
@@ -272,11 +295,8 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                     timer.start('dot product')
                     contribution = A.dot(contribution)
                     timer.stop('dot product')
-                    nonzero_contribution_indices = contribution.nonzero()[0]
                     sc_col = row_ndx
-                    for sc_row in nonzero_contribution_indices:
-                        val_ndx = self.sc_coordinate_to_value_ndx_map[(sc_row, sc_col)]
-                        self.schur_complement.data[val_ndx] -= contribution[sc_row]
+                    self.schur_complement.data[_slice + self.sc_coordinate_to_value_ndx_map[ndx][sc_col]] -= contribution[self.block_ndx_to_nonzero_rows[ndx]]
                     for indptr in range(A.indptr[row_ndx], A.indptr[row_ndx + 1]):
                         col = A.indices[indptr]
                         val = A.data[indptr]
