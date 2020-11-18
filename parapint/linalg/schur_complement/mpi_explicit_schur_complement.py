@@ -153,12 +153,12 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                 return res
 
         timer.start('sc_structure')
-        self._get_sc_structure(block_matrix=block_matrix)
+        self._get_sc_structure(block_matrix=block_matrix, timer=timer)
         timer.stop('sc_structure')
 
         return res
 
-    def _get_sc_structure(self, block_matrix):
+    def _get_sc_structure(self, block_matrix, timer):
         """
         Parameters
         ----------
@@ -194,8 +194,10 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                 sc_col[_slice] = _row
         global_row = np.zeros(sc_nnz, dtype=np.int)
         global_col = np.zeros(sc_nnz, dtype=np.int)
+        timer.start('Allreduce')
         comm.Allreduce(sc_row, global_row)
         comm.Allreduce(sc_col, global_col)
+        timer.stop('Allreduce')
         sc_values = np.zeros(sc_nnz, dtype=np.double)
         sc_dim = block_matrix.get_row_size(self.block_dim - 1)
         self.schur_complement = coo_matrix((sc_values, (global_row, global_col)), shape=(sc_dim, sc_dim))
