@@ -615,26 +615,30 @@ def fraction_to_the_boundary(interface, tau):
     alpha_primal_max = min(alpha_primal_max_a, alpha_primal_max_b,
                            alpha_primal_max_c, alpha_primal_max_d)
 
+    _xl = duals_primals_lb.copy()
+    _xl.fill(0)
     alpha_dual_max_a = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_primals_lb,
         delta_x=delta_duals_primals_lb,
-        xl=np.zeros(duals_primals_lb.size))
+        xl=_xl)
     alpha_dual_max_b = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_primals_ub,
         delta_x=delta_duals_primals_ub,
-        xl=np.zeros(duals_primals_ub.size))
+        xl=_xl)
+    _xl = duals_slacks_lb.copy()
+    _xl.fill(0)
     alpha_dual_max_c = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_slacks_lb,
         delta_x=delta_duals_slacks_lb,
-        xl=np.zeros(duals_slacks_lb.size))
+        xl=_xl)
     alpha_dual_max_d = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_slacks_ub,
         delta_x=delta_duals_slacks_ub,
-        xl=np.zeros(duals_slacks_ub.size))
+        xl=_xl)
     alpha_dual_max = min(alpha_dual_max_a, alpha_dual_max_b,
                          alpha_dual_max_c, alpha_dual_max_d)
 
