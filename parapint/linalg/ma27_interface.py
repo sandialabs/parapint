@@ -109,6 +109,8 @@ class InteriorPointMA27Interface(LinearSolverInterface):
         res: LinearSolverResults
             A LinearSolverResults object with a status attribute for the LinearSolverStatus
         """
+        if self._dim is None:
+            raise RuntimeError('Perform symbolic factorization first!')
         if not isspmatrix_coo(matrix):
             matrix = matrix.tocoo()
         matrix = tril(matrix)
