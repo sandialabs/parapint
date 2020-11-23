@@ -41,12 +41,11 @@ class _BorderMatrix(object):
         self.sc_data_offset: Optional[int] = None
 
     def _get_nonzero_rows(self):
-        nonzero_rows = list()
-        for row_ndx in range(self.csr.shape[0]):
-            row_nnz = self.csr.indptr[row_ndx + 1] - self.csr.indptr[row_ndx]
-            if row_nnz != 0:
-                nonzero_rows.append(row_ndx)
-        return np.asarray(nonzero_rows, dtype=np.int)
+        _tmp = np.empty(self.csr.indptr.size, dtype=np.int)
+        _tmp[0:-1] = self.csr.indptr[1:]
+        _tmp[-1] = self.csr.indptr[-1]
+        nonzero_rows = (_tmp - self.csr.indptr).nonzero()[0]
+        return nonzero_rows
 
     def _get_nonzero_row_to_ndx_map(self):
         res = dict()
