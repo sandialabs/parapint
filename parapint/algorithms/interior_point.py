@@ -298,17 +298,17 @@ class InteriorPointSolver(object):
 
             # Factorize linear system
             timer.start('factorize')
-            timer.start('symbolic')
             if _iter == 0:
+                timer.start('symbolic')
                 sym_fact_status, sym_fact_iter = try_factorization_and_reallocation(kkt=kkt,
                                                                                     linear_solver=self.linear_solver,
                                                                                     reallocation_factor=self.reallocation_factor,
                                                                                     max_iter=self.max_reallocation_iterations,
                                                                                     symbolic_or_numeric='symbolic',
                                                                                     timer=timer)
+                timer.stop('symbolic')
                 if sym_fact_status != LinearSolverStatus.successful:
                     raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(sym_fact_status))
-            timer.stop('symbolic')
             timer.start('numeric')
             reg_coef = self.factorize(kkt=kkt, timer=timer)
             timer.stop('numeric')
