@@ -3,6 +3,7 @@ from .results import LinearSolverStatus, LinearSolverResults
 from pyomo.common.dependencies import attempt_import
 from scipy.sparse import isspmatrix_coo, tril
 from collections import OrderedDict
+import numpy as np
 mumps, mumps_available = attempt_import(name='pyomo.contrib.pynumero.linalg.mumps_interface',
                                         error_message='pymumps is required to use the MumpsInterface')
 
@@ -22,6 +23,9 @@ class MumpsInterface(LinearSolverInterface):
             cntl_options = dict()
         if icntl_options is None:
             icntl_options = dict()
+
+        self._row = None
+        self._col = None
 
         # These options are set in order to get the correct inertia.
         if 13 not in icntl_options:
@@ -48,6 +52,9 @@ class MumpsInterface(LinearSolverInterface):
         nrows, ncols = matrix.shape
         self._dim = nrows
 
+        self._row = matrix.row
+        self._col = matrix.col
+
         try:
             self._mumps.do_symbolic_factorization(matrix)
             self._prev_allocation = self.get_infog(16)
@@ -71,6 +78,10 @@ class MumpsInterface(LinearSolverInterface):
         if not isspmatrix_coo(matrix):
             matrix = matrix.tocoo()
         matrix = tril(matrix)
+
+        if (not np.array_equal(matrix.row, self._row)) or (not np.array_equal(matrix.col, self._col)):
+            self.do_symbolic_factorization(matrix=matrix, raise_on_error=raise_on_error, timer=timer)
+
         try:
             self._mumps.do_numeric_factorization(matrix)
         except RuntimeError as err:
