@@ -396,7 +396,7 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         if timer is None:
             timer = HierarchicalTimer()
         timer.start('eval hess')
-        hessian = self._nlp.evaluate_hessian_lag()
+        hess_block = self._nlp.evaluate_hessian_lag()
         timer.stop('eval hess')
         timer.start('eval jac')
         jac_eq = self._nlp.evaluate_jacobian_eq()
@@ -414,8 +414,9 @@ class InteriorPointInterface(BaseInteriorPointInterface):
                 duals_primals_ub/(self._nlp.primals_ub() - primals))
         n = self._nlp.n_primals()
         indices = np.arange(n)
-        hess_block = scipy.sparse.coo_matrix((data, (indices, indices)), shape=(n, n))
-        hess_block += hessian
+        hess_block.row = np.concatenate([hess_block.row, indices])
+        hess_block.col = np.concatenate([hess_block.col, indices])
+        hess_block.data = np.concatenate([hess_block.data, data])
         timer.stop('hess block')
 
         timer.start('slack block')
@@ -425,6 +426,11 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         indices = np.arange(n)
         slack_block = scipy.sparse.coo_matrix((data, (indices, indices)), shape=(n, n))
         timer.stop('slack block')
+
+        timer.start('regularization block')
+        eq_reg_blk = scipy.sparse.identity(self._nlp.n_eq_constraints(), format='coo')
+        eq_reg_blk.data.fill(0)
+        timer.stop('regularization block')
 
         timer.start('set block')
         kkt = BlockMatrix(4, 4)
@@ -440,6 +446,7 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         kkt.set_block(1, 3, -scipy.sparse.identity(
                                             self._nlp.n_ineq_constraints(),
                                             format='coo'))
+        kkt.set_block(2, 2, eq_reg_blk)
         timer.stop('set block')
         return kkt
 

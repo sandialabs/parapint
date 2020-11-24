@@ -51,6 +51,7 @@ class TestRegularization(unittest.TestCase):
 
         # Evaluate KKT matrix before any iterations
         kkt = interface.evaluate_primal_dual_kkt_matrix()
+        linear_solver.do_symbolic_factorization(kkt)
         reg_coef = ip_solver.factorize(kkt)
 
         # Expected regularization coefficient:

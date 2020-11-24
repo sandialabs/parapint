@@ -3,6 +3,7 @@ from .results import LinearSolverStatus, LinearSolverResults
 from pyomo.common.dependencies import attempt_import
 from scipy.sparse import isspmatrix_coo, tril
 from collections import OrderedDict
+import numpy as np
 mumps, mumps_available = attempt_import(name='pyomo.contrib.pynumero.linalg.mumps_interface',
                                         error_message='pymumps is required to use the MumpsInterface')
 
@@ -23,6 +24,9 @@ class MumpsInterface(LinearSolverInterface):
         if icntl_options is None:
             icntl_options = dict()
 
+        self._row = None
+        self._col = None
+
         # These options are set in order to get the correct inertia.
         if 13 not in icntl_options:
             icntl_options[13] = 1
@@ -41,12 +45,15 @@ class MumpsInterface(LinearSolverInterface):
         self.log_header(include_error=self.log_error)
         self._prev_allocation = 0
 
-    def do_symbolic_factorization(self, matrix, raise_on_error=True):
+    def do_symbolic_factorization(self, matrix, raise_on_error=True, timer=None):
         if not isspmatrix_coo(matrix):
             matrix = matrix.tocoo()
         matrix = tril(matrix)
         nrows, ncols = matrix.shape
         self._dim = nrows
+
+        self._row = matrix.row
+        self._col = matrix.col
 
         try:
             self._mumps.do_symbolic_factorization(matrix)
@@ -67,10 +74,14 @@ class MumpsInterface(LinearSolverInterface):
             res.status = LinearSolverStatus.warning
         return res
 
-    def do_numeric_factorization(self, matrix, raise_on_error=True):
+    def do_numeric_factorization(self, matrix, raise_on_error=True, timer=None):
         if not isspmatrix_coo(matrix):
             matrix = matrix.tocoo()
         matrix = tril(matrix)
+
+        if (not np.array_equal(matrix.row, self._row)) or (not np.array_equal(matrix.col, self._col)):
+            self.do_symbolic_factorization(matrix=matrix, raise_on_error=raise_on_error, timer=timer)
+
         try:
             self._mumps.do_numeric_factorization(matrix)
         except RuntimeError as err:

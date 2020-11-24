@@ -8,7 +8,7 @@ from mpi4py import MPI
 import itertools
 from .explicit_schur_complement import _process_sub_results
 from typing import Dict, Optional
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 
 
 comm: MPI.Comm = MPI.COMM_WORLD
@@ -41,12 +41,11 @@ class _BorderMatrix(object):
         self.sc_data_offset: Optional[int] = None
 
     def _get_nonzero_rows(self):
-        nonzero_rows = list()
-        for row_ndx in range(self.csr.shape[0]):
-            row_nnz = self.csr.indptr[row_ndx + 1] - self.csr.indptr[row_ndx]
-            if row_nnz != 0:
-                nonzero_rows.append(row_ndx)
-        return np.asarray(nonzero_rows, dtype=np.int)
+        _tmp = np.empty(self.csr.indptr.size, dtype=np.int)
+        _tmp[0:-1] = self.csr.indptr[1:]
+        _tmp[-1] = self.csr.indptr[-1]
+        nonzero_rows = (_tmp - self.csr.indptr).nonzero()[0]
+        return nonzero_rows
 
     def _get_nonzero_row_to_ndx_map(self):
         res = dict()
@@ -121,7 +120,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         """
         if timer is None:
             timer = HierarchicalTimer()
-        timer.start('symbolic')
 
         block_matrix = matrix
         nbrows, nbcols = block_matrix.bshape
@@ -154,13 +152,12 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                 return res
 
         timer.start('sc_structure')
-        self._get_sc_structure(block_matrix=block_matrix)
+        self._get_sc_structure(block_matrix=block_matrix, timer=timer)
         timer.stop('sc_structure')
-        timer.stop('symbolic')
 
         return res
 
-    def _get_sc_structure(self, block_matrix):
+    def _get_sc_structure(self, block_matrix, timer):
         """
         Parameters
         ----------
@@ -196,8 +193,10 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                 sc_col[_slice] = _row
         global_row = np.zeros(sc_nnz, dtype=np.int)
         global_col = np.zeros(sc_nnz, dtype=np.int)
+        timer.start('Allreduce')
         comm.Allreduce(sc_row, global_row)
         comm.Allreduce(sc_col, global_col)
+        timer.stop('Allreduce')
         sc_values = np.zeros(sc_nnz, dtype=np.double)
         sc_dim = block_matrix.get_row_size(self.block_dim - 1)
         self.schur_complement = coo_matrix((sc_values, (global_row, global_col)), shape=(sc_dim, sc_dim))
@@ -231,7 +230,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         """
         if timer is None:
             timer = HierarchicalTimer()
-        timer.start('numeric')
 
         self.block_matrix = block_matrix = matrix
 
@@ -283,10 +281,19 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                     _rhs[col] -= val
 
         timer.start('communicate')
+        timer.start('zeros')
         sc = np.zeros(self.schur_complement.data.size, dtype=np.double)
+        timer.stop('zeros')
+        timer.start('Barrier')
+        comm.Barrier()
+        timer.stop('Barrier')
+        timer.start('Allreduce')
         comm.Allreduce(self.schur_complement.data, sc)
+        timer.stop('Allreduce')
         self.schur_complement.data = sc
-        sc = self.schur_complement + block_matrix.get_block(self.block_dim-1, self.block_dim-1)
+        timer.start('add')
+        sc = self.schur_complement + block_matrix.get_block(self.block_dim-1, self.block_dim-1).tocoo()
+        timer.stop('add')
         timer.stop('communicate')
         timer.stop('form SC')
 
@@ -298,7 +305,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         sub_res = self.schur_complement_solver.do_numeric_factorization(sc)
         _process_sub_results(res, sub_res)
         timer.stop('factor SC')
-        timer.stop('numeric')
         return res
 
     def do_back_solve(self, rhs, timer=None):

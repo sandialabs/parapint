@@ -23,14 +23,14 @@ class LinearSolverInterface(ABC):
         return logging.getLogger(name)
 
     @abstractmethod
-    def do_symbolic_factorization(self, matrix, raise_on_error=True):
+    def do_symbolic_factorization(self, matrix, raise_on_error=True, timer=None):
         """
         Perform symbolic factorization with the nonzero structure of the matrix.
         """
         pass
 
     @abstractmethod
-    def do_numeric_factorization(self, matrix, raise_on_error=True):
+    def do_numeric_factorization(self, matrix, raise_on_error=True, timer=None):
         """
         Factorize the matrix. Can only be called after do_symbolic_factorization.
         """
