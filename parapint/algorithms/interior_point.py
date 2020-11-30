@@ -3,9 +3,10 @@ import numpy as np
 import logging
 import time
 from parapint.linalg.results import LinearSolverStatus
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 import enum
 from parapint.interfaces.interface import BaseInteriorPointInterface
+from parapint.linalg.base_linear_solver_interface import LinearSolverInterface
 from typing import Optional
 
 
@@ -297,7 +298,20 @@ class InteriorPointSolver(object):
 
             # Factorize linear system
             timer.start('factorize')
+            if _iter == 0:
+                timer.start('symbolic')
+                sym_fact_status, sym_fact_iter = try_factorization_and_reallocation(kkt=kkt,
+                                                                                    linear_solver=self.linear_solver,
+                                                                                    reallocation_factor=self.reallocation_factor,
+                                                                                    max_iter=self.max_reallocation_iterations,
+                                                                                    symbolic_or_numeric='symbolic',
+                                                                                    timer=timer)
+                timer.stop('symbolic')
+                if sym_fact_status != LinearSolverStatus.successful:
+                    raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(sym_fact_status))
+            timer.start('numeric')
             reg_coef = self.factorize(kkt=kkt, timer=timer)
+            timer.stop('numeric')
             timer.stop('factorize')
 
             timer.start('back solve')
@@ -343,6 +357,7 @@ class InteriorPointSolver(object):
                                                                      linear_solver=self.linear_solver,
                                                                      reallocation_factor=self.reallocation_factor,
                                                                      max_iter=self.max_reallocation_iterations,
+                                                                     symbolic_or_numeric='numeric',
                                                                      timer=timer)
             if status not in {LinearSolverStatus.successful, LinearSolverStatus.singular}:
                 raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(status))
@@ -371,6 +386,7 @@ class InteriorPointSolver(object):
                                                                          linear_solver=self.linear_solver,
                                                                          reallocation_factor=self.reallocation_factor,
                                                                          max_iter=self.max_reallocation_iterations,
+                                                                         symbolic_or_numeric='numeric',
                                                                          timer=timer)
                 if status != LinearSolverStatus.successful:
                     raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(status))
@@ -513,24 +529,19 @@ class InteriorPointSolver(object):
         return fraction_to_the_boundary(self.interface, 1 - self._barrier_parameter)
 
 
-def try_factorization_and_reallocation(kkt, linear_solver, reallocation_factor, max_iter, timer=None):
+def try_factorization_and_reallocation(kkt, linear_solver: LinearSolverInterface, reallocation_factor, max_iter,
+                                       symbolic_or_numeric, timer=None):
     if timer is None:
         timer = HierarchicalTimer()
 
     assert max_iter >= 1
+    if symbolic_or_numeric == 'numeric':
+        method = linear_solver.do_numeric_factorization
+    else:
+        assert symbolic_or_numeric == 'symbolic'
+        method = linear_solver.do_symbolic_factorization
     for count in range(max_iter):
-        timer.start('symbolic')
-        """
-        Performance could be improved significantly by only performing symbolic factorization once. 
-        However, we first have to make sure the nonzero structure (and ordering of row and column arrays) 
-        of the KKT matrix never changes. We have not had time to test this thoroughly, yet. 
-        """
-        res = linear_solver.do_symbolic_factorization(matrix=kkt, raise_on_error=False)
-        timer.stop('symbolic')
-        if res.status == LinearSolverStatus.successful:
-            timer.start('numeric')
-            res = linear_solver.do_numeric_factorization(matrix=kkt, raise_on_error=False)
-            timer.stop('numeric')
+        res = method(matrix=kkt, raise_on_error=False, timer=timer)
         status = res.status
         if status == LinearSolverStatus.not_enough_memory:
             linear_solver.increase_memory_allocation(reallocation_factor)
@@ -615,26 +626,30 @@ def fraction_to_the_boundary(interface, tau):
     alpha_primal_max = min(alpha_primal_max_a, alpha_primal_max_b,
                            alpha_primal_max_c, alpha_primal_max_d)
 
+    _xl = duals_primals_lb.copy()
+    _xl.fill(0)
     alpha_dual_max_a = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_primals_lb,
         delta_x=delta_duals_primals_lb,
-        xl=np.zeros(duals_primals_lb.size))
+        xl=_xl)
     alpha_dual_max_b = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_primals_ub,
         delta_x=delta_duals_primals_ub,
-        xl=np.zeros(duals_primals_ub.size))
+        xl=_xl)
+    _xl = duals_slacks_lb.copy()
+    _xl.fill(0)
     alpha_dual_max_c = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_slacks_lb,
         delta_x=delta_duals_slacks_lb,
-        xl=np.zeros(duals_slacks_lb.size))
+        xl=_xl)
     alpha_dual_max_d = _fraction_to_the_boundary_helper_lb(
         tau=tau,
         x=duals_slacks_ub,
         delta_x=delta_duals_slacks_ub,
-        xl=np.zeros(duals_slacks_ub.size))
+        xl=_xl)
     alpha_dual_max = min(alpha_dual_max_a, alpha_dual_max_b,
                          alpha_dual_max_c, alpha_dual_max_d)
 

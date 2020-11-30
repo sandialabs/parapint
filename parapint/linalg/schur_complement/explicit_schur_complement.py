@@ -3,6 +3,7 @@ from parapint.linalg.base_linear_solver_interface import LinearSolverInterface
 from parapint.linalg.results import LinearSolverStatus, LinearSolverResults
 from scipy.sparse import coo_matrix
 from typing import Dict
+from pyomo.common.timing import HierarchicalTimer
 
 
 def _process_sub_results(res, sub_res):
@@ -42,12 +43,14 @@ class SchurComplementLinearSolver(LinearSolverInterface):
 
     def do_symbolic_factorization(self,
                                   matrix: BlockMatrix,
-                                  raise_on_error: bool = True) -> LinearSolverResults:
+                                  raise_on_error: bool = True,
+                                  timer=None) -> LinearSolverResults:
         """
         Parameters
         ----------
         matrix: BlockMatrix
         raise_on_error: bool
+        timer: HierarchicalTimer
 
         Returns
         -------
@@ -76,12 +79,14 @@ class SchurComplementLinearSolver(LinearSolverInterface):
 
     def do_numeric_factorization(self,
                                  matrix: BlockMatrix,
-                                 raise_on_error: bool = True) -> LinearSolverResults:
+                                 raise_on_error: bool = True,
+                                 timer=None) -> LinearSolverResults:
         """
         Parameters
         ----------
         matrix: BlockMatrix
         raise_on_error: bool
+        timer: HierarchicalTimer
 
         Returns
         -------
