@@ -249,6 +249,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
             if raise_on_error:
                 raise RuntimeError('Numeric factorization unsuccessful; status: ' + str(res.status))
             else:
+                timer.stop('form SC')
                 return res
 
         # in a scipy csr_matrix,
@@ -301,6 +302,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         sub_res = self.schur_complement_solver.do_symbolic_factorization(sc, raise_on_error=raise_on_error)
         _process_sub_results(res, sub_res)
         if res.status not in {LinearSolverStatus.successful, LinearSolverStatus.warning}:
+            timer.stop('factor SC')
             return res
         sub_res = self.schur_complement_solver.do_numeric_factorization(sc)
         _process_sub_results(res, sub_res)
