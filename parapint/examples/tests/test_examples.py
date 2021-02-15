@@ -13,6 +13,19 @@ class TestExamples(unittest.TestCase):
         self.assertAlmostEqual(m.x.value, 0)
         self.assertAlmostEqual(m.y.value, 1)
 
+    @attr(parallel=True, speed='medium', n_procs=[1, 2, 3])
+    def test_stochastic(self):
+        comm: MPI.Comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+        farmer = examples.stochastic.Farmer()
+        interface = examples.stochastic.main(farmer=farmer,
+                                             subproblem_solver_class=parapint.linalg.ScipyInterface,
+                                             subproblem_solver_options={'compute_inertia': True})
+        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['CORN'].value, 80)
+        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['SUGAR_BEETS'].value, 250)
+        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['WHEAT'].value, 170)
+
     @attr(parallel=True, speed='medium', n_procs=3)
     def test_schur_complement(self):
         comm: MPI.Comm = MPI.COMM_WORLD
