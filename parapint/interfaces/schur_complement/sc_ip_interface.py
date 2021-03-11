@@ -1,6 +1,6 @@
 from parapint.interfaces.interface import BaseInteriorPointInterface, InteriorPointInterface
 from abc import ABCMeta, abstractmethod
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, identity
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 import numpy as np
 from typing import Dict, Optional, Union, Tuple, Sequence, Iterable, Any
@@ -875,6 +875,10 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             nlp.regularize_equality_gradient(kkt=kkt.get_block(ndx, ndx).get_block(0, 0),
                                              coef=coef,
                                              copy_kkt=False)
+        block = kkt.get_block(self._num_time_blocks, self._num_time_blocks)
+        ptb = coef * identity(block.get_row_size(0), format='coo')
+        block.set_block(0, 0, ptb)
+        kkt.set_block(self._num_time_blocks, self._num_time_blocks, block)
         return kkt
 
     def regularize_hessian(self, kkt: BlockMatrix, coef: float, copy_kkt: bool = True) -> BlockMatrix:
@@ -1673,6 +1677,10 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             nlp.regularize_equality_gradient(kkt=kkt.get_block(ndx, ndx).get_block(0, 0),
                                              coef=coef,
                                              copy_kkt=False)
+        block = kkt.get_block(self._num_scenarios, self._num_scenarios)
+        ptb = coef * identity(block.get_row_size(0), format='coo')
+        block.set_block(0, 0, ptb)
+        kkt.set_block(self._num_scenarios, self._num_scenarios, block)
         return kkt
 
     def regularize_hessian(self, kkt: BlockMatrix, coef: float, copy_kkt: bool = True) -> BlockMatrix:
