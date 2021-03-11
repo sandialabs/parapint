@@ -25,8 +25,9 @@ class TestSolveInteriorPoint(unittest.TestCase):
         m.c1 = pe.Constraint(expr=m.y == pe.exp(m.x))
         m.c2 = pe.Constraint(expr=m.y >= (m.x - 1)**2)
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
-        status = ip_solver.solve(interface)
+        options = parapint.algorithms.IPOptions()
+        options.linalg.solver = linear_solver
+        status = parapint.algorithms.ip_solve(interface=interface, options=options)
         self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         x = interface.get_primals()
         duals_eq = interface.get_duals_eq()
@@ -44,8 +45,9 @@ class TestSolveInteriorPoint(unittest.TestCase):
         m.x = pe.Var(bounds=(1, 4))
         m.obj = pe.Objective(expr=m.x**2)
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
-        status = ip_solver.solve(interface)
+        options = parapint.algorithms.IPOptions()
+        options.linalg.solver = linear_solver
+        status = parapint.algorithms.ip_solve(interface=interface, options=options)
         self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         interface.load_primals_into_pyomo_model()
         self.assertAlmostEqual(m.x.value, 1)

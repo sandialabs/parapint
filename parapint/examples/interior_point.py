@@ -11,8 +11,9 @@ def main(linear_solver):
     m.c2 = pe.Constraint(expr=m.y == pe.exp(m.x))
 
     interface = parapint.interfaces.InteriorPointInterface(m)
-    opt = parapint.algorithms.InteriorPointSolver(linear_solver=linear_solver)
-    status = opt.solve(interface)
+    options = parapint.algorithms.IPOptions()
+    options.linalg.solver = linear_solver
+    status = parapint.algorithms.ip_solve(interface=interface, options=options)
     assert status == parapint.algorithms.InteriorPointStatus.optimal
     interface.load_primals_into_pyomo_model()
     m.x.pprint()
