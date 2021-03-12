@@ -430,6 +430,8 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         timer.start('regularization block')
         eq_reg_blk = scipy.sparse.identity(self._nlp.n_eq_constraints(), format='coo')
         eq_reg_blk.data.fill(0)
+        ineq_reg_blk = scipy.sparse.identity(self._nlp.n_ineq_constraints(), format='coo')
+        ineq_reg_blk.data.fill(0)
         timer.stop('regularization block')
 
         timer.start('set block')
@@ -447,6 +449,7 @@ class InteriorPointInterface(BaseInteriorPointInterface):
                                             self._nlp.n_ineq_constraints(),
                                             format='coo'))
         kkt.set_block(2, 2, eq_reg_blk)
+        kkt.set_block(3, 3, ineq_reg_blk)
         timer.stop('set block')
         return kkt
 
@@ -557,11 +560,15 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         if copy_kkt:
             kkt = kkt.copy()
         reg_coef = coef
-        ptb = (reg_coef *
-               scipy.sparse.identity(self._nlp.n_eq_constraints(),
-                                     format='coo'))
+        eq_ptb = (reg_coef *
+                  scipy.sparse.identity(self._nlp.n_eq_constraints(),
+                                        format='coo'))
+        ineq_ptb = (reg_coef *
+                    scipy.sparse.identity(self._nlp.n_ineq_constraints(),
+                                          format='coo'))
 
-        kkt.set_block(2, 2, ptb)
+        kkt.set_block(2, 2, eq_ptb)
+        kkt.set_block(3, 3, ineq_ptb)
         return kkt
 
     def regularize_hessian(self, kkt, coef, copy_kkt=True):

@@ -103,8 +103,9 @@ def main(farmer: Farmer, subproblem_solver_class, subproblem_solver_options):
     linear_solver = parapint.linalg.MPISchurComplementLinearSolver(
         subproblem_solvers={ndx: subproblem_solver_class(**subproblem_solver_options) for ndx in range(len(farmer.scenarios))},
         schur_complement_solver=subproblem_solver_class(**subproblem_solver_options))
-    opt = parapint.algorithms.InteriorPointSolver(linear_solver, tol=1e-7)
-    status = opt.solve(interface)
+    options = parapint.algorithms.IPOptions()
+    options.linalg.solver = linear_solver
+    status = parapint.algorithms.ip_solve(interface=interface, options=options)
     assert status == parapint.algorithms.InteriorPointStatus.optimal
     interface.load_primals_into_pyomo_model()
 

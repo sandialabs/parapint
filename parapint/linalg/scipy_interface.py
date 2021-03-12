@@ -39,10 +39,10 @@ class ScipyInterface(LinearSolverInterface):
 
         if self.compute_inertia:
             eig = eigvals(matrix.toarray())
-            pos_eig = np.count_nonzero((eig > 0))
-            neg_eigh = np.count_nonzero((eig < 0))
-            zero_eig = np.count_nonzero(eig == 0)
-            self._inertia = (pos_eig, neg_eigh, zero_eig)
+            pos_eig = np.count_nonzero((eig > 1e-8))
+            neg_eig = np.count_nonzero((eig < -1e-8))
+            zero_eig = len(eig) - pos_eig - neg_eig
+            self._inertia = (pos_eig, neg_eig, zero_eig)
 
         return res
 
