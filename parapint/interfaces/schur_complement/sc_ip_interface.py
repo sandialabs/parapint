@@ -1,6 +1,6 @@
 from parapint.interfaces.interface import BaseInteriorPointInterface, InteriorPointInterface
 from abc import ABCMeta, abstractmethod
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, identity
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 import numpy as np
 from typing import Dict, Optional, Union, Tuple, Sequence, Iterable, Any
@@ -278,9 +278,15 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             if ndx == 0:
                 sub_kkt.set_row_size(1, 0)
                 sub_kkt.set_col_size(1, 0)
+                ptb = identity(0, format='coo')
+                ptb.data.fill(0)
+                sub_kkt.set_block(1, 1, ptb)
             else:
                 sub_kkt.set_row_size(1, self._num_states)
                 sub_kkt.set_col_size(1, self._num_states)
+                ptb = identity(self._num_states, format='coo')
+                ptb.data.fill(0)
+                sub_kkt.set_block(1, 1, ptb)
             row_1 = BlockMatrix(nbrows=1, nbcols=4)
             if ndx == 0:
                 row_1.set_row_size(0, 0)
@@ -293,6 +299,7 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             row_1.set_block(0, 0, self._link_backward_matrices[ndx])
             sub_kkt.set_block(1, 0, row_1)
             sub_kkt.set_block(0, 1, row_1.transpose())
+
             self._kkt.set_block(ndx, ndx, sub_kkt)
             sub_rhs = BlockVector(2)
             sub_rhs.set_block(0, np.zeros(n))
@@ -337,6 +344,12 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
         rhs_block.set_block(1, np.zeros(self._total_num_coupling_vars))
         block.set_block(1, 0, sub_block)
         block.set_block(0, 1, sub_block.transpose())
+        ptb = identity(block.get_row_size(0), format='coo')
+        ptb.data.fill(0)
+        block.set_block(0, 0, ptb)
+        ptb = identity(block.get_row_size(1), format='coo')
+        ptb.data.fill(0)
+        block.set_block(1, 1, ptb)
         self._kkt.set_block(self._num_time_blocks, self._num_time_blocks, block)
         self._rhs.set_block(self._num_time_blocks, rhs_block)
 
@@ -875,6 +888,16 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             nlp.regularize_equality_gradient(kkt=kkt.get_block(ndx, ndx).get_block(0, 0),
                                              coef=coef,
                                              copy_kkt=False)
+            if ndx == 0:
+                n = 0
+            else:
+                n = self._num_states
+            ptb = coef * identity(n, format='coo')
+            kkt.get_block(ndx, ndx).set_block(1, 1, ptb)
+        block = kkt.get_block(self._num_time_blocks, self._num_time_blocks)
+        ptb = coef * identity(block.get_row_size(0), format='coo')
+        block.set_block(0, 0, ptb)
+        kkt.set_block(self._num_time_blocks, self._num_time_blocks, block)
         return kkt
 
     def regularize_hessian(self, kkt: BlockMatrix, coef: float, copy_kkt: bool = True) -> BlockMatrix:
@@ -884,6 +907,10 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             nlp.regularize_hessian(kkt=kkt.get_block(ndx, ndx).get_block(0, 0),
                                    coef=coef,
                                    copy_kkt=False)
+        block = kkt.get_block(self._num_time_blocks, self._num_time_blocks)
+        ptb = coef * identity(block.get_row_size(1), format='coo')
+        block.set_block(1, 1, ptb)
+        kkt.set_block(self._num_time_blocks, self._num_time_blocks, block)
         return kkt
 
     def load_primals_into_pyomo_model(self):
@@ -1211,6 +1238,9 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             row_1.set_block(0, 0, self._linking_matrices[ndx])
             sub_kkt.set_block(1, 0, row_1)
             sub_kkt.set_block(0, 1, row_1.transpose())
+            ptb = identity(self._num_first_stage_vars_by_scenario[ndx], format='coo')
+            ptb.data.fill(0)
+            sub_kkt.set_block(1, 1, ptb)
             self._kkt.set_block(ndx, ndx, sub_kkt)
             sub_rhs = BlockVector(2)
             sub_rhs.set_block(0, np.zeros(n))
@@ -1227,10 +1257,9 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             self._kkt.set_block(self._num_scenarios, ndx, block)
             self._kkt.set_block(ndx, self._num_scenarios, block.transpose())
 
-        self._kkt.set_block(self._num_scenarios,
-                            self._num_scenarios,
-                            coo_matrix((self._total_num_coupling_vars,
-                                        self._total_num_coupling_vars)))
+        ptb = identity(self._total_num_coupling_vars, format='coo')
+        ptb.data.fill(0)
+        self._kkt.set_block(self._num_scenarios, self._num_scenarios, ptb)
         self._rhs.set_block(self._num_scenarios, np.zeros(self._total_num_coupling_vars))
 
     def _build_linking_matrix(self, nlp: InteriorPointInterface, first_stage_vars: Dict[Any, _GeneralVarData]):
@@ -1673,6 +1702,8 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             nlp.regularize_equality_gradient(kkt=kkt.get_block(ndx, ndx).get_block(0, 0),
                                              coef=coef,
                                              copy_kkt=False)
+            ptb = coef * identity(self._num_first_stage_vars_by_scenario[ndx], format='coo')
+            kkt.get_block(ndx, ndx).set_block(1, 1, ptb)
         return kkt
 
     def regularize_hessian(self, kkt: BlockMatrix, coef: float, copy_kkt: bool = True) -> BlockMatrix:
@@ -1682,6 +1713,9 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             nlp.regularize_hessian(kkt=kkt.get_block(ndx, ndx).get_block(0, 0),
                                    coef=coef,
                                    copy_kkt=False)
+        block = kkt.get_block(self._num_scenarios, self._num_scenarios)
+        ptb = coef * identity(block.shape[0], format='coo')
+        kkt.set_block(self._num_scenarios, self._num_scenarios, ptb)
         return kkt
 
     def load_primals_into_pyomo_model(self):

@@ -53,8 +53,9 @@ This linear solver requires a sub-solver for every time block::
 
 The linear solver and interface instances can then be used with the interior point algorithm::
 
-    opt = parapint.interior_point.InteriorPointSolver(linear_solver)
-    status = opt.solve(problem)
+    options = parapint.algorithms.IPOptions()
+    options.linalg.solver = linear_solver
+    status = parapint.algorithms.ip_solve(interface, options)
     assert status == parapint.interior_point.InteriorPointStatus.optimal
     problem.load_primals_into_pyomo_model()
     for ndx in problem.local_block_indices:

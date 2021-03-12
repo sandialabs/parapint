@@ -5,6 +5,7 @@ from pyomo.common.dependencies import attempt_import
 from pyomo.contrib.pynumero.asl import AmplInterface
 import parapint
 from pyomo.contrib.pynumero.linalg.ma27 import MA27Interface
+from parapint.algorithms.interior_point import numeric_factorization
 ma27_available = MA27Interface.available()
 mumps, mumps_available = attempt_import('mumps', 'Interior point requires mumps')
 asl_available = AmplInterface.available()
@@ -44,21 +45,22 @@ class TestRegularization(unittest.TestCase):
     def _test_regularization(self, linear_solver):
         m = make_model()
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
-        ip_solver.set_interface(interface)
+        options = parapint.algorithms.IPOptions()
+        options.linalg.solver = linear_solver
 
         interface.set_barrier_parameter(1e-1)
 
         # Evaluate KKT matrix before any iterations
         kkt = interface.evaluate_primal_dual_kkt_matrix()
         linear_solver.do_symbolic_factorization(kkt)
-        reg_coef = ip_solver.factorize(kkt)
+        reg_coef = numeric_factorization(interface=interface, kkt=kkt, options=options,
+                                         inertia_coef=options.inertia_correction.init_coef)
 
         # Expected regularization coefficient:
         self.assertAlmostEqual(reg_coef, 1e-4)
 
-        desired_n_neg_evals = (ip_solver.interface.n_eq_constraints() +
-                               ip_solver.interface.n_ineq_constraints())
+        desired_n_neg_evals = (interface.n_eq_constraints() +
+                               interface.n_ineq_constraints())
 
         # Expected inertia:
         n_pos_evals, n_neg_evals, n_null_evals = linear_solver.get_inertia()
@@ -82,9 +84,11 @@ class TestRegularization(unittest.TestCase):
     def _test_regularization_2(self, linear_solver):
         m = make_model_2()
         interface = parapint.interfaces.InteriorPointInterface(m)
-        ip_solver = parapint.algorithms.InteriorPointSolver(linear_solver)
+        options = parapint.algorithms.IPOptions()
+        options.linalg.solver = linear_solver
 
-        status = ip_solver.solve(interface)
+        status = parapint.algorithms.ip_solve(interface=interface,
+                                              options=options)
         self.assertEqual(status, parapint.algorithms.InteriorPointStatus.optimal)
         interface.load_primals_into_pyomo_model()
         self.assertAlmostEqual(m.x.value, 1)
