@@ -7,9 +7,7 @@ from pyomo.common.timing import HierarchicalTimer
 import enum
 from parapint.interfaces.interface import BaseInteriorPointInterface
 from parapint.linalg.base_linear_solver_interface import LinearSolverInterface
-from parapint.linalg.ma27_interface import InteriorPointMA27Interface
 from typing import Optional
-import math
 from pyomo.common.config import ConfigDict, ConfigValue, PositiveFloat, NonNegativeInt
 
 
@@ -67,7 +65,7 @@ class LinalgOptions(ConfigDict):
         self.declare('reallocation_factor', ConfigValue(domain=PositiveFloat))
         self.declare('max_num_reallocations', ConfigValue(domain=NonNegativeInt))
 
-        self.solver = InteriorPointMA27Interface(cntl_options={1: 1e-6})
+        self.solver = None
         self.reallocation_factor = 2
         self.max_num_reallocations = 5
 
