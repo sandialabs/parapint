@@ -38,8 +38,17 @@ class InertiaCorrectionOptions(ConfigDict):
     factor_decrease: float
     max_coef: float
     """
-    def __init__(self):
-        super(InertiaCorrectionOptions, self).__init__()
+    def __init__(self,
+                 description=None,
+                 doc=None,
+                 implicit=False,
+                 implicit_domain=None,
+                 visibility=0):
+        super().__init__(description=description,
+                         doc=doc,
+                         implicit=implicit,
+                         implicit_domain=implicit_domain,
+                         visibility=visibility)
         self.declare('init_coef', ConfigValue(domain=PositiveFloat))
         self.declare('factor_increase', ConfigValue(domain=PositiveFloat))
         self.declare('factor_decrease', ConfigValue(domain=PositiveFloat))
@@ -59,8 +68,17 @@ class LinalgOptions(ConfigDict):
     reallocation_factor: float
     max_num_reallocations: int
     """
-    def __init__(self):
-        super(LinalgOptions, self).__init__()
+    def __init__(self,
+                 description=None,
+                 doc=None,
+                 implicit=False,
+                 implicit_domain=None,
+                 visibility=0):
+        super().__init__(description=description,
+                         doc=doc,
+                         implicit=implicit,
+                         implicit_domain=implicit_domain,
+                         visibility=visibility)
         self.declare('solver', ConfigValue())
         self.declare('reallocation_factor', ConfigValue(domain=PositiveFloat))
         self.declare('max_num_reallocations', ConfigValue(domain=NonNegativeInt))
@@ -83,8 +101,17 @@ class IPOptions(ConfigDict):
     inertia_correction: InertiaCorrectionOptions
     linalg: LinalgOptions
     """
-    def __init__(self):
-        super(IPOptions, self).__init__()
+    def __init__(self,
+                 description=None,
+                 doc=None,
+                 implicit=False,
+                 implicit_domain=None,
+                 visibility=0):
+        super().__init__(description=description,
+                         doc=doc,
+                         implicit=implicit,
+                         implicit_domain=implicit_domain,
+                         visibility=visibility)
         self.declare('max_iter', ConfigValue(domain=NonNegativeInt))
         self.declare('tol', ConfigValue(domain=PositiveFloat))
         self.declare('init_barrier_parameter', ConfigValue(domain=PositiveFloat))

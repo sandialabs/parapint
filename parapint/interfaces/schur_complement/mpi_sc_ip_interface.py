@@ -285,7 +285,8 @@ class MPIStochasticSchurComplementInteriorPointInterface(StochasticSchurCompleme
     def __init__(self,
                  scenarios: Sequence,
                  nonanticipative_var_identifiers: Sequence,
-                 comm: MPI.Comm):
+                 comm: MPI.Comm,
+                 ownership_map: Optional[Dict] = None):
         """
         This method sets up the coupling matrices and the structure for the kkt system
 
@@ -298,6 +299,8 @@ class MPIStochasticSchurComplementInteriorPointInterface(StochasticSchurCompleme
             exact same list in the exact same order.
         comm: MPI.Comm
             The MPI communicator
+        ownership_map: Dict
+            A dictionary mapping scenario index (i.e., index into scenarios) to rank
         """
         self._num_scenarios: int = len(scenarios)
         self._num_first_stage_vars: int = len(nonanticipative_var_identifiers)
@@ -316,11 +319,18 @@ class MPIStochasticSchurComplementInteriorPointInterface(StochasticSchurCompleme
         if self._size > self._num_scenarios:
             raise ValueError('Cannot yet handle more processes than scenarios')
 
-        self._local_block_indices: Sequence[int] = _distribute_blocks(num_blocks=self._num_scenarios,
-                                                                      rank=self._rank,
-                                                                      size=self._size)
-        self._ownership_map: Dict[int, int] = _get_ownership_map(num_blocks=self._num_scenarios,
-                                                                 size=self._size)
+        if ownership_map is None:
+            self._local_block_indices: Sequence[int] = _distribute_blocks(num_blocks=self._num_scenarios,
+                                                                          rank=self._rank,
+                                                                          size=self._size)
+            self._ownership_map: Dict[int, int] = _get_ownership_map(num_blocks=self._num_scenarios,
+                                                                     size=self._size)
+        else:
+            self._ownership_map = dict(ownership_map)
+            self._local_block_indices = list()
+            for scenario_ndx, scenario in enumerate(scenarios):
+                if self._ownership_map[scenario_ndx] == self._rank:
+                    self._local_block_indices.append(scenario_ndx)
 
         self._primals_lb: MPIBlockVector = self._build_mpi_block_vector(extra_block=True)
         self._primals_ub: MPIBlockVector = self._build_mpi_block_vector(extra_block=True)
