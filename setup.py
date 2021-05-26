@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='parapint',
-      version='0.3.1',
+      version='0.3.1.dev0',
       packages=find_packages(),
       description='Parapint: Parallel NLP algorithms',
       long_description=open('README.md').read(),
