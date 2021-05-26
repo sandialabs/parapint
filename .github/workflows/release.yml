@@ -10,7 +10,7 @@ jobs:
     name: Create PyPI release
     runs-on: ubuntu-18.04
     steps:
-    - uses: actions/checkout@main_branch
+    - uses: actions/checkout@main
     - name: Create environment
       uses: actions/setup-python@v1
       with:
