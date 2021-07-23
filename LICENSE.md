@@ -1,3 +1,5 @@
+BSD 3-Clause License
+
 Copyright Notice
 =================
 
