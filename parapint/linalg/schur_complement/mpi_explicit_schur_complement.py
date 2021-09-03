@@ -78,6 +78,7 @@ def _combine_nonzero_elements(rows, cols):
     nonzero_elements = zip(rows, cols)
     nonzero_elements = {i: None for i in nonzero_elements}
     nonzero_elements = list(nonzero_elements.keys())
+    nonzero_elements.sort()
     nonzero_rows, nonzero_cols = tuple(zip(*nonzero_elements))
     nonzero_rows = np.asarray(nonzero_rows, dtype=np.int64)
     nonzero_cols = np.asarray(nonzero_cols, dtype=np.int64)
@@ -116,8 +117,8 @@ def _get_all_nonzero_elements_in_sc(border_matrices: Dict[int, _BorderMatrix]):
         comm.Allgatherv(nonzero_rows, [all_nonzero_rows, nz_rows_size])
         comm.Allgatherv(nonzero_cols, [all_nonzero_cols, nz_cols_size])
 
-        nonzero_rows = np.concatenate([nonzero_rows, all_nonzero_rows])
-        nonzero_cols = np.concatenate([nonzero_cols, all_nonzero_cols])
+        nonzero_rows = all_nonzero_rows
+        nonzero_cols = all_nonzero_cols
 
         nonzero_rows, nonzero_cols = _combine_nonzero_elements(nonzero_rows, nonzero_cols)
 
