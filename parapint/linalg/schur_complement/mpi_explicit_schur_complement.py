@@ -75,7 +75,7 @@ def _get_nested_comms() -> List[MPI.Comm]:
 
 
 def _combine_nonzero_elements(rows, cols):
-    nonzero_elements = zip(rows, cols)
+    nonzero_elements = list(zip(rows, cols))
     nonzero_elements = {i: None for i in nonzero_elements}
     nonzero_elements = list(nonzero_elements.keys())
     nonzero_elements.sort()
