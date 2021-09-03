@@ -114,8 +114,8 @@ def _get_all_nonzero_elements_in_sc(border_matrices: Dict[int, _BorderMatrix]):
         all_nonzero_rows = np.zeros(nz_rows_size.sum(), dtype=np.int64)
         all_nonzero_cols = np.zeros(nz_cols_size.sum(), dtype=np.int64)
 
-        comm.Allgatherv(nonzero_rows, [all_nonzero_rows, nz_rows_size])
-        comm.Allgatherv(nonzero_cols, [all_nonzero_cols, nz_cols_size])
+        _comm.Allgatherv(nonzero_rows, [all_nonzero_rows, nz_rows_size])
+        _comm.Allgatherv(nonzero_cols, [all_nonzero_cols, nz_cols_size])
 
         nonzero_rows = all_nonzero_rows
         nonzero_cols = all_nonzero_cols
