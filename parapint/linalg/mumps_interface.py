@@ -115,7 +115,7 @@ class MumpsInterface(LinearSolverInterface):
         return new_allocation
 
     def do_back_solve(self, rhs):
-        res = self._mumps.do_back_solve(rhs)
+        res, status = self._mumps.do_back_solve(rhs)
         self.log_info()
         return res
 
