@@ -6,7 +6,7 @@ from pyomo.contrib.pynumero.sparse.mpi_block_matrix import MPIBlockMatrix
 from pyomo.contrib.pynumero.sparse import BlockVector, BlockMatrix
 import numpy as np
 from typing import Dict, Optional, Sequence
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 from mpi4py import MPI
 from .sc_ip_interface import DynamicSchurComplementInteriorPointInterface, StochasticSchurComplementInteriorPointInterface
 
