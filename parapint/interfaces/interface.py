@@ -3,7 +3,7 @@ from pyomo.contrib.pynumero.interfaces import pyomo_nlp, ampl_nlp
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 import numpy as np
 import scipy.sparse
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 
 
 class BaseInteriorPointInterface(ABC):

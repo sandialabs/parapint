@@ -7,7 +7,7 @@ from typing import Dict, Optional, Union, Tuple, Sequence, Iterable, Any
 from pyomo.core.base.block import _BlockData
 from pyomo.core.base.var import _GeneralVarData
 from pyomo.core.base.constraint import _GeneralConstraintData
-from pyutilib.misc.timing import HierarchicalTimer
+from pyomo.common.timing import HierarchicalTimer
 
 
 class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, metaclass=ABCMeta):
