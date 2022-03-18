@@ -7,7 +7,7 @@ from scipy.sparse import coo_matrix, csr_matrix
 from mpi4py import MPI
 import itertools
 from .explicit_schur_complement import _process_sub_results
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from pyomo.common.timing import HierarchicalTimer
 
 
@@ -58,6 +58,73 @@ class _BorderMatrix(object):
         return self.nonzero_rows.size
 
 
+def _get_nested_comms() -> List[MPI.Comm]:
+    nested_comms = list()  # root first, leaf last
+    nested_comms.append(comm)
+
+    last_comm = comm
+    while last_comm.Get_size() > 3:
+        if last_comm.Get_rank() < last_comm.Get_size()/2:
+            color = 0
+        else:
+            color = 1
+        last_comm = last_comm.Split(color, last_comm.Get_rank())
+        nested_comms.append(last_comm)
+
+    return nested_comms
+
+
+def _combine_nonzero_elements(rows, cols):
+    nonzero_elements = list(zip(rows, cols))
+    nonzero_elements = {i: None for i in nonzero_elements}
+    nonzero_elements = list(nonzero_elements.keys())
+    nonzero_elements.sort()
+    nonzero_rows, nonzero_cols = tuple(zip(*nonzero_elements))
+    nonzero_rows = np.asarray(nonzero_rows, dtype=np.int64)
+    nonzero_cols = np.asarray(nonzero_cols, dtype=np.int64)
+    return nonzero_rows, nonzero_cols
+
+
+def _get_all_nonzero_elements_in_sc(border_matrices: Dict[int, _BorderMatrix]):
+    nested_comms = _get_nested_comms()
+
+    nonzero_rows = np.zeros(0, dtype=np.int64)
+    nonzero_cols = np.zeros(0, dtype=np.int64)
+
+    for ndx, mat in border_matrices.items():
+        mat_nz_elements = list(itertools.product(mat.nonzero_rows, mat.nonzero_rows))
+        mat_nz_rows, mat_nz_cols = tuple(zip(*mat_nz_elements))
+        nonzero_rows = np.concatenate([nonzero_rows, mat_nz_rows])
+        nonzero_cols = np.concatenate([nonzero_cols, mat_nz_cols])
+        nonzero_rows, nonzero_cols = _combine_nonzero_elements(nonzero_rows, nonzero_cols)
+
+    for _comm in reversed(nested_comms):
+        tmp_nz_rows_size = np.zeros(_comm.Get_size(), dtype=np.int64)
+        tmp_nz_cols_size = np.zeros(_comm.Get_size(), dtype=np.int64)
+
+        tmp_nz_rows_size[_comm.Get_rank()] = nonzero_rows.size
+        tmp_nz_cols_size[_comm.Get_rank()] = nonzero_cols.size
+
+        nz_rows_size = np.zeros(_comm.Get_size(), dtype=np.int64)
+        nz_cols_size = np.zeros(_comm.Get_size(), dtype=np.int64)
+
+        _comm.Allreduce(tmp_nz_rows_size, nz_rows_size)
+        _comm.Allreduce(tmp_nz_cols_size, nz_cols_size)
+
+        all_nonzero_rows = np.zeros(nz_rows_size.sum(), dtype=np.int64)
+        all_nonzero_cols = np.zeros(nz_cols_size.sum(), dtype=np.int64)
+
+        _comm.Allgatherv(nonzero_rows, [all_nonzero_rows, nz_rows_size])
+        _comm.Allgatherv(nonzero_cols, [all_nonzero_cols, nz_cols_size])
+
+        nonzero_rows = all_nonzero_rows
+        nonzero_cols = all_nonzero_cols
+
+        nonzero_rows, nonzero_cols = _combine_nonzero_elements(nonzero_rows, nonzero_cols)
+
+    return nonzero_rows, nonzero_cols
+
+
 class MPISchurComplementLinearSolver(LinearSolverInterface):
     """
 
@@ -92,7 +159,8 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         self.block_matrix = None
         self.local_block_indices = list()
         self.schur_complement = coo_matrix((0, 0))
-        self.border_matrices = dict()
+        self.border_matrices: Dict[int, _BorderMatrix] = dict()
+        self.sc_data_slices = dict()
 
     def do_symbolic_factorization(self,
                                   matrix: MPIBlockMatrix,
@@ -163,43 +231,28 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         ----------
         block_matrix: pyomo.contrib.pynumero.sparse.mpi_block_matrix.MPIBlockMatrix
         """
+        timer.start('build_border_matrices')
         self.border_matrices = dict()
-        tmp_num_nonzero_rows = np.zeros(self.block_dim - 1, dtype=np.int)
         for ndx in self.local_block_indices:
-            self.border_matrices[ndx] = border_matrix = _BorderMatrix(block_matrix.get_block(self.block_dim - 1, ndx))
-            tmp_num_nonzero_rows[ndx] = border_matrix.num_nonzero_rows
-        num_nonzero_rows = np.zeros(self.block_dim - 1, dtype=np.int)
-        comm.Allreduce(tmp_num_nonzero_rows, num_nonzero_rows)
-
-        sc_nnz = 0
-        local_block_indices_set = set(self.local_block_indices)
-        for block_ndx in range(self.block_dim - 1):
-            if block_ndx in local_block_indices_set:
-                border_matrix = self.border_matrices[block_ndx]
-                border_matrix.sc_data_offset = sc_nnz
-            sc_nnz += num_nonzero_rows[block_ndx]**2
-
-        sc_row = np.zeros(sc_nnz, dtype=np.int)
-        sc_col = np.zeros(sc_nnz, dtype=np.int)
-        for block_ndx in self.local_block_indices:
-            border_matrix = self.border_matrices[block_ndx]
-            for i, _row in enumerate(border_matrix.nonzero_rows):
-                start = border_matrix.sc_data_offset + i*border_matrix.num_nonzero_rows
-                end = start + border_matrix.num_nonzero_rows
-                sc_row[start:end] = _row
-                _slice = np.arange(border_matrix.sc_data_offset + i,
-                                   border_matrix.sc_data_offset + border_matrix.num_nonzero_rows**2,
-                                   border_matrix.num_nonzero_rows)
-                sc_col[_slice] = _row
-        global_row = np.zeros(sc_nnz, dtype=np.int)
-        global_col = np.zeros(sc_nnz, dtype=np.int)
-        timer.start('Allreduce')
-        comm.Allreduce(sc_row, global_row)
-        comm.Allreduce(sc_col, global_col)
-        timer.stop('Allreduce')
-        sc_values = np.zeros(sc_nnz, dtype=np.double)
+            self.border_matrices[ndx] = _BorderMatrix(block_matrix.get_block(self.block_dim - 1, ndx))
+        timer.stop('build_border_matrices')
+        timer.start('gather_all_nonzero_elements')
+        nonzero_rows, nonzero_cols = _get_all_nonzero_elements_in_sc(self.border_matrices)
+        timer.stop('gather_all_nonzero_elements')
+        timer.start('construct_schur_complement')
+        sc_nnz = nonzero_rows.size
         sc_dim = block_matrix.get_row_size(self.block_dim - 1)
-        self.schur_complement = coo_matrix((sc_values, (global_row, global_col)), shape=(sc_dim, sc_dim))
+        sc_values = np.zeros(sc_nnz, dtype=np.double)
+        self.schur_complement = coo_matrix((sc_values, (nonzero_rows, nonzero_cols)), shape=(sc_dim, sc_dim))
+        timer.stop('construct_schur_complement')
+        timer.start('get_sc_data_slices')
+        self.sc_data_slices = dict()
+        for ndx in self.local_block_indices:
+            self.sc_data_slices[ndx] = dict()
+            border_matrix = self.border_matrices[ndx]
+            for row_ndx in border_matrix.nonzero_rows:
+                self.sc_data_slices[ndx][row_ndx] = np.bitwise_and(nonzero_cols == row_ndx, np.isin(nonzero_rows, border_matrix.nonzero_rows)).nonzero()[0]
+        timer.stop('get_sc_data_slices')
 
     def do_numeric_factorization(self,
                                  matrix: MPIBlockMatrix,
@@ -259,8 +312,6 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         self.schur_complement.data = np.zeros(self.schur_complement.data.size, dtype=np.double)
         for ndx in self.local_block_indices:
             border_matrix: _BorderMatrix = self.border_matrices[ndx]
-            _slice = (border_matrix.sc_data_offset +
-                      np.arange(border_matrix.num_nonzero_rows, dtype=np.int) * border_matrix.num_nonzero_rows)
             A = border_matrix.csr
             _rhs = np.zeros(A.shape[1], dtype=np.double)
             solver = self.subproblem_solvers[ndx]
@@ -275,7 +326,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
                 timer.start('dot product')
                 contribution = A.dot(contribution)
                 timer.stop('dot product')
-                self.schur_complement.data[_slice + border_matrix.nonzero_row_to_ndx_map[row_ndx]] -= contribution[border_matrix.nonzero_rows]
+                self.schur_complement.data[self.sc_data_slices[ndx][row_ndx]] -= contribution[border_matrix.nonzero_rows]
                 for indptr in range(A.indptr[row_ndx], A.indptr[row_ndx + 1]):
                     col = A.indices[indptr]
                     val = A.data[indptr]
