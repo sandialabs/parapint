@@ -178,7 +178,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         raise_on_error: bool
             If False, an error will not be raised if an error occurs during symbolic factorization. Instead the
             status attribute of the results object will indicate an error ocurred.
-        timer: pyutilib.misc.timing.HierarchicalTimer
+        timer: HierarchicalTimer
             A timer for profiling.
 
         Returns
@@ -273,7 +273,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         raise_on_error: bool
             If False, an error will not be raised if an error occurs during symbolic factorization. Instead the
             status attribute of the results object will indicate an error ocurred.
-        timer: pyutilib.misc.timing.HierarchicalTimer
+        timer: HierarchicalTimer
             A timer for profiling.
 
         Returns
@@ -368,7 +368,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
         Parameters
         ----------
         rhs: MPIBlockVector
-        timer: pyutilib.misc.timing.HierarchicalTimer
+        timer: HierarchicalTimer
 
         Returns
         -------
