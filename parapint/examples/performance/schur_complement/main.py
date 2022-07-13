@@ -1,5 +1,10 @@
 from parapint.examples.performance.schur_complement.create_model import Model, MPIModel
-from parapint.linalg import SchurComplementLinearSolver, InteriorPointMA27Interface, MPISchurComplementLinearSolver
+from parapint.linalg import (
+    SchurComplementLinearSolver,
+    InteriorPointMA27Interface,
+    MPISchurComplementLinearSolver,
+    ScipyInterface,
+)
 import time
 from mpi4py import MPI
 import argparse
@@ -55,7 +60,7 @@ def helper(m, solver):
     return res
 
 
-def run(args):
+def run(args, linear_solver_str='ma27'):
     comm: MPI.Comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
@@ -69,19 +74,28 @@ def run(args):
     n_theta = 10
     A_nnz_per_row = 3
 
+    if linear_solver_str == 'ma27':
+        linear_solver_class = InteriorPointMA27Interface
+        linear_solver_options = dict(cntl_options={1: 1e-6})
+    else:
+        if linear_solver_str != 'scipy':
+            raise ValueError('linear_solver_str should be ma27 or scipy')
+        linear_solver_class = ScipyInterface
+        linear_solver_options = dict(compute_inertia=False)
+
     if args.method == 'fs':
         model_class = Model
-        solver = InteriorPointMA27Interface(cntl_options={1: 1e-6})
+        solver = linear_solver_class(**linear_solver_options)
     elif args.method == 'ssc':
         model_class = Model
         solver = SchurComplementLinearSolver(
-            subproblem_solvers={i: InteriorPointMA27Interface(cntl_options={1: 1e-6}) for i in range(n_blocks)},
-            schur_complement_solver=InteriorPointMA27Interface(cntl_options={1: 1e-6}))
+            subproblem_solvers={i: linear_solver_class(**linear_solver_options) for i in range(n_blocks)},
+            schur_complement_solver=linear_solver_class(**linear_solver_options))
     else:
         model_class = MPIModel
         solver = MPISchurComplementLinearSolver(
-            subproblem_solvers={i: InteriorPointMA27Interface(cntl_options={1: 1e-6}) for i in range(n_blocks)},
-            schur_complement_solver=InteriorPointMA27Interface(cntl_options={1: 1e-6}))
+            subproblem_solvers={i: linear_solver_class(**linear_solver_options) for i in range(n_blocks)},
+            schur_complement_solver=linear_solver_class(**linear_solver_options))
 
     m = model_class(
         n_blocks=n_blocks,

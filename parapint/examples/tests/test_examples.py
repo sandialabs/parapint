@@ -71,7 +71,7 @@ class TestExamples(unittest.TestCase):
                 self.n_blocks = 3
 
         args = Args()
-        max_err = sc_main.run(args)
+        max_err = sc_main.run(args, linear_solver_str='scipy')
         self.assertAlmostEqual(max_err, 0.12027436661136193)
 
     @attr(parallel=True, speed='slow', n_procs=3)
@@ -82,5 +82,5 @@ class TestExamples(unittest.TestCase):
                 self.n_blocks = 3
 
         args = Args()
-        max_err = sc_main.run(args)
+        max_err = sc_main.run(args, linear_solver_str='scipy')
         self.assertAlmostEqual(max_err, 0.12027436661136193)
