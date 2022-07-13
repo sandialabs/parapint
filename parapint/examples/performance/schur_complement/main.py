@@ -60,13 +60,13 @@ def helper(m, solver):
     return res
 
 
-def run(args, linear_solver_str='ma27'):
+def run(args, linear_solver_str="ma27"):
     comm: MPI.Comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
-    if args.method != 'psc':
+    if args.method != "psc":
         if size != 1:
-            raise RuntimeError('running serial code with multiple processes')
+            raise RuntimeError("running serial code with multiple processes")
 
     n_blocks = args.n_blocks
     n_q_per_block = 5000
@@ -74,43 +74,49 @@ def run(args, linear_solver_str='ma27'):
     n_theta = 10
     A_nnz_per_row = 3
 
-    if linear_solver_str == 'ma27':
+    if linear_solver_str == "ma27":
         linear_solver_class = InteriorPointMA27Interface
         linear_solver_options = dict(cntl_options={1: 1e-6})
     else:
-        if linear_solver_str != 'scipy':
-            raise ValueError('linear_solver_str should be ma27 or scipy')
+        if linear_solver_str != "scipy":
+            raise ValueError("linear_solver_str should be ma27 or scipy")
         linear_solver_class = ScipyInterface
         linear_solver_options = dict(compute_inertia=False)
 
-    if args.method == 'fs':
+    if args.method == "fs":
         model_class = Model
         solver = linear_solver_class(**linear_solver_options)
-    elif args.method == 'ssc':
+    elif args.method == "ssc":
         model_class = Model
         solver = SchurComplementLinearSolver(
-            subproblem_solvers={i: linear_solver_class(**linear_solver_options) for i in range(n_blocks)},
-            schur_complement_solver=linear_solver_class(**linear_solver_options))
+            subproblem_solvers={
+                i: linear_solver_class(**linear_solver_options) for i in range(n_blocks)
+            },
+            schur_complement_solver=linear_solver_class(**linear_solver_options),
+        )
     else:
         model_class = MPIModel
         solver = MPISchurComplementLinearSolver(
-            subproblem_solvers={i: linear_solver_class(**linear_solver_options) for i in range(n_blocks)},
-            schur_complement_solver=linear_solver_class(**linear_solver_options))
+            subproblem_solvers={
+                i: linear_solver_class(**linear_solver_options) for i in range(n_blocks)
+            },
+            schur_complement_solver=linear_solver_class(**linear_solver_options),
+        )
 
     m = model_class(
         n_blocks=n_blocks,
         n_q_per_block=n_q_per_block,
         n_y_multiplier=n_y_multiplier,
         n_theta=n_theta,
-        A_nnz_per_row=A_nnz_per_row
+        A_nnz_per_row=A_nnz_per_row,
     )
 
     res = helper(m, solver)
 
     method_map = {
-        'fs': 'Full Space',
-        'ssc': 'Serial Schur-Complement',
-        'psc': 'Parallel Schur-Complement',
+        "fs": "Full Space",
+        "ssc": "Serial Schur-Complement",
+        "psc": "Parallel Schur-Complement",
     }
 
     if rank == 0:
@@ -148,11 +154,13 @@ def run(args, linear_solver_str='ma27'):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, required=True, choices={'fs', 'ssc', 'psc'})
-    parser.add_argument('--n_blocks', type=int, required=True)
+    parser.add_argument(
+        "--method", type=str, required=True, choices={"fs", "ssc", "psc"}
+    )
+    parser.add_argument("--n_blocks", type=int, required=True)
     args = parser.parse_args()
     run(args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

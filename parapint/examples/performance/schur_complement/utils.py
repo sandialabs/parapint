@@ -23,9 +23,9 @@ def get_ownership_map(num_blocks: int, size: int) -> Dict[int, int]:
 
 def get_random_n_diagonal_matrix(n, nnz_per_row):
     assert nnz_per_row % 2 == 1
-    m = eye(m=n, n=n, k=0, format='coo')
-    for ndx in range(1, int((nnz_per_row - 1)/2) + 1):
-        m += eye(m=n, n=n, k=ndx, format='coo')
-        m += eye(m=n, n=n, k=-ndx, format='coo')
+    m = eye(m=n, n=n, k=0, format="coo")
+    for ndx in range(1, int((nnz_per_row - 1) / 2) + 1):
+        m += eye(m=n, n=n, k=ndx, format="coo")
+        m += eye(m=n, n=n, k=-ndx, format="coo")
     m.data *= np.random.normal(loc=0, scale=5, size=m.data.size)
     return m
