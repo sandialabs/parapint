@@ -55,12 +55,7 @@ def helper(m, solver):
     return res
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--method', type=str, required=True, choices={'fs', 'ssc', 'psc'})
-    parser.add_argument('--n_blocks', type=int, required=True)
-    args = parser.parse_args()
-
+def run(args):
     comm: MPI.Comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
@@ -77,19 +72,16 @@ def main():
     if args.method == 'fs':
         model_class = Model
         solver = InteriorPointMA27Interface(cntl_options={1: 1e-6})
-        filename = 'full_space_' + str(n_blocks) + '_blocks.csv'
     elif args.method == 'ssc':
         model_class = Model
         solver = SchurComplementLinearSolver(
             subproblem_solvers={i: InteriorPointMA27Interface(cntl_options={1: 1e-6}) for i in range(n_blocks)},
             schur_complement_solver=InteriorPointMA27Interface(cntl_options={1: 1e-6}))
-        filename = 'serial_sc_' + str(n_blocks) + '_blocks.csv'
     else:
         model_class = MPIModel
         solver = MPISchurComplementLinearSolver(
             subproblem_solvers={i: InteriorPointMA27Interface(cntl_options={1: 1e-6}) for i in range(n_blocks)},
             schur_complement_solver=InteriorPointMA27Interface(cntl_options={1: 1e-6}))
-        filename = 'parallel_sc_' + str(n_blocks) + '_blocks_' + str(size) + '_cores.csv'
 
     m = model_class(
         n_blocks=n_blocks,
@@ -136,6 +128,16 @@ def main():
             f"{res.back_solve_time:<15.3f}"
             f"{res.total_time:<15.3f}"
         )
+
+    return res.max_err
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--method', type=str, required=True, choices={'fs', 'ssc', 'psc'})
+    parser.add_argument('--n_blocks', type=int, required=True)
+    args = parser.parse_args()
+    run(args)
 
 
 if __name__ == '__main__':

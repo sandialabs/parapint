@@ -3,6 +3,7 @@ from parapint import examples
 import unittest
 from nose.plugins.attrib import attr
 from mpi4py import MPI
+from parapint.examples.performance.schur_complement import main as sc_main
 
 
 class TestExamples(unittest.TestCase):
@@ -62,3 +63,24 @@ class TestExamples(unittest.TestCase):
         interface = examples.burgers.main(args=args,
                                           subproblem_solver_class=parapint.linalg.ScipyInterface,
                                           subproblem_solver_options={'compute_inertia': True})
+
+    def test_schur_complement_fs(self):
+        class Args:
+            def __init__(self):
+                self.method = 'fs'
+                self.n_blocks = 3
+
+        args = Args()
+        max_err = sc_main.run(args)
+        self.assertAlmostEqual(max_err, 0.12027436661136193)
+
+    @attr(parallel=True, speed='slow', n_procs=3)
+    def test_schur_complement_psc(self):
+        class Args:
+            def __init__(self):
+                self.method = 'psc'
+                self.n_blocks = 3
+
+        args = Args()
+        max_err = sc_main.run(args)
+        self.assertAlmostEqual(max_err, 0.12027436661136193)
