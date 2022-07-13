@@ -27,14 +27,14 @@ class TestExamples(unittest.TestCase):
         self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['WHEAT'].value, 170)
 
     @attr(parallel=True, speed='medium', n_procs=3)
-    def test_schur_complement(self):
+    def test_dynamics(self):
         comm: MPI.Comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
         self.assertEqual(size, 3)
-        interface = examples.schur_complement.main(subproblem_solver_class=parapint.linalg.ScipyInterface,
-                                                   subproblem_solver_options={'compute_inertia': True},
-                                                   show_plot=False)
+        interface = examples.dynamics.main(subproblem_solver_class=parapint.linalg.ScipyInterface,
+                                           subproblem_solver_options={'compute_inertia': True},
+                                           show_plot=False)
         if rank == 0:
             self.assertAlmostEqual(interface.pyomo_model(ndx=0).p[0].value, 1.6046242850486279)
             self.assertAlmostEqual(interface.pyomo_model(ndx=0).p[10].value, 2.0)
