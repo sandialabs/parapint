@@ -60,7 +60,7 @@ def helper(m, solver):
     return res
 
 
-def run(args, linear_solver_str="ma27"):
+def run(args, linear_solver_str="ma27", n_q_per_block=5000, n_y_multiplier=120):
     comm: MPI.Comm = MPI.COMM_WORLD
     size = comm.Get_size()
     rank = comm.Get_rank()
@@ -69,8 +69,6 @@ def run(args, linear_solver_str="ma27"):
             raise RuntimeError("running serial code with multiple processes")
 
     n_blocks = args.n_blocks
-    n_q_per_block = 5000
-    n_y_multiplier = 120
     n_theta = 10
     A_nnz_per_row = 3
 

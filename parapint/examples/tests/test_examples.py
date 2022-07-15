@@ -72,8 +72,8 @@ class TestExamples(unittest.TestCase):
                 self.n_blocks = 3
 
         args = Args()
-        max_err = sc_main.run(args, linear_solver_str='scipy')
-        self.assertAlmostEqual(max_err, 0.12027436661136193)
+        max_err = sc_main.run(args, linear_solver_str='scipy', n_q_per_block=500, n_y_multiplier=12)
+        self.assertAlmostEqual(max_err, 0.3163456780448639)
 
     @attr(parallel=True, speed='medium', n_procs=3)
     def test_schur_complement_psc(self):
@@ -83,5 +83,5 @@ class TestExamples(unittest.TestCase):
                 self.n_blocks = 3
 
         args = Args()
-        max_err = sc_main.run(args, linear_solver_str='scipy')
-        self.assertAlmostEqual(max_err, 0.12027436661136193)
+        max_err = sc_main.run(args, linear_solver_str='scipy', n_q_per_block=500, n_y_multiplier=12)
+        self.assertAlmostEqual(max_err, 0.3163456780448639)
