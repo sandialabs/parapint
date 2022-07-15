@@ -3,6 +3,7 @@ from parapint import examples
 import unittest
 from nose.plugins.attrib import attr
 from mpi4py import MPI
+from parapint.examples.performance.schur_complement import main as sc_main
 
 
 class TestExamples(unittest.TestCase):
@@ -27,14 +28,14 @@ class TestExamples(unittest.TestCase):
         self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['WHEAT'].value, 170)
 
     @attr(parallel=True, speed='medium', n_procs=3)
-    def test_schur_complement(self):
+    def test_dynamics(self):
         comm: MPI.Comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
         self.assertEqual(size, 3)
-        interface = examples.schur_complement.main(subproblem_solver_class=parapint.linalg.ScipyInterface,
-                                                   subproblem_solver_options={'compute_inertia': True},
-                                                   show_plot=False)
+        interface = examples.dynamics.main(subproblem_solver_class=parapint.linalg.ScipyInterface,
+                                           subproblem_solver_options={'compute_inertia': True},
+                                           show_plot=False)
         if rank == 0:
             self.assertAlmostEqual(interface.pyomo_model(ndx=0).p[0].value, 1.6046242850486279)
             self.assertAlmostEqual(interface.pyomo_model(ndx=0).p[10].value, 2.0)
@@ -62,3 +63,25 @@ class TestExamples(unittest.TestCase):
         interface = examples.burgers.main(args=args,
                                           subproblem_solver_class=parapint.linalg.ScipyInterface,
                                           subproblem_solver_options={'compute_inertia': True})
+
+    @attr(parallel=False, speed='medium')
+    def test_schur_complement_fs(self):
+        class Args:
+            def __init__(self):
+                self.method = 'fs'
+                self.n_blocks = 3
+
+        args = Args()
+        max_err = sc_main.run(args, linear_solver_str='scipy', n_q_per_block=500, n_y_multiplier=12)
+        self.assertAlmostEqual(max_err, 0.3163456780448639)
+
+    @attr(parallel=True, speed='medium', n_procs='all')
+    def test_schur_complement_psc(self):
+        class Args:
+            def __init__(self):
+                self.method = 'psc'
+                self.n_blocks = 3
+
+        args = Args()
+        max_err = sc_main.run(args, linear_solver_str='scipy', n_q_per_block=500, n_y_multiplier=12)
+        self.assertAlmostEqual(max_err, 0.3163456780448639)

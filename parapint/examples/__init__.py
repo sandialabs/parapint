@@ -1,1 +1,1 @@
-from . import interior_point, burgers, schur_complement, stochastic
+from . import interior_point, burgers, dynamics, stochastic
