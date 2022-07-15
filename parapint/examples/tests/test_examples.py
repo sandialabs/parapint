@@ -64,6 +64,7 @@ class TestExamples(unittest.TestCase):
                                           subproblem_solver_class=parapint.linalg.ScipyInterface,
                                           subproblem_solver_options={'compute_inertia': True})
 
+    @attr(parallel=False, speed='medium')
     def test_schur_complement_fs(self):
         class Args:
             def __init__(self):
@@ -74,7 +75,7 @@ class TestExamples(unittest.TestCase):
         max_err = sc_main.run(args, linear_solver_str='scipy')
         self.assertAlmostEqual(max_err, 0.12027436661136193)
 
-    @attr(parallel=True, speed='slow', n_procs=3)
+    @attr(parallel=True, speed='medium', n_procs=3)
     def test_schur_complement_psc(self):
         class Args:
             def __init__(self):
