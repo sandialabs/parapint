@@ -41,7 +41,7 @@ class _BorderMatrix(object):
         self.sc_data_offset: Optional[int] = None
 
     def _get_nonzero_rows(self):
-        _tmp = np.empty(self.csr.indptr.size, dtype=np.int)
+        _tmp = np.empty(self.csr.indptr.size, dtype=np.int64)
         _tmp[0:-1] = self.csr.indptr[1:]
         _tmp[-1] = self.csr.indptr[-1]
         nonzero_rows = (_tmp - self.csr.indptr).nonzero()[0]
