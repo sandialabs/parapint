@@ -3,6 +3,7 @@ from pyomo.common.dependencies import attempt_import
 import numpy as np
 from scipy.sparse import coo_matrix, tril
 import parapint
+import pytest
 from pyomo.contrib.pynumero.linalg.ma27 import MA27Interface
 
 ma27_available = MA27Interface.available()
@@ -41,6 +42,8 @@ class TestTrilBehavior(unittest.TestCase):
     the behavior of tril that is tested in this
     test, namely the tests in TestWrongNonzeroOrdering.
     """
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_tril_behavior(self):
         mat = get_base_matrix(use_tril=True)
         mat2 = tril(mat)
@@ -75,15 +78,21 @@ class TestLinearSolvers(unittest.TestCase):
         x = solver.do_back_solve(rhs)
         self.assertTrue(np.allclose(x, x_true))
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_scipy(self):
         solver = parapint.linalg.ScipyInterface()
         self._test_linear_solvers(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'mumps is needed for interior point mumps tests')
     def test_mumps(self):
         solver = parapint.linalg.MumpsInterface()
         self._test_linear_solvers(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not ma27_available, 'MA27 is needed for interior point MA27 tests')
     def test_ma27(self):
         solver = parapint.linalg.InteriorPointMA27Interface()
@@ -102,15 +111,21 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
         x = solver.do_back_solve(rhs)
         self.assertTrue(np.allclose(x, x_true))
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_scipy(self):
         solver = parapint.linalg.ScipyInterface()
         self._test_solvers(solver, use_tril=False)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'mumps is needed for interior point mumps tests')
     def test_mumps(self):
         solver = parapint.linalg.MumpsInterface()
         self._test_solvers(solver, use_tril=True)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not ma27_available, 'MA27 is needed for interior point MA27 tests')
     def test_ma27(self):
         solver = parapint.linalg.InteriorPointMA27Interface()

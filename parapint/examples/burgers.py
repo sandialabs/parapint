@@ -235,7 +235,7 @@ class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPoin
             colors = cm.jet(y_list)
             rcount, ccount, _ = colors.shape
             fig = plt.figure()
-            ax = fig.gca(projection='3d')
+            ax = fig.add_subplot(111, projection='3d')
             surf = ax.plot_surface(np.array(all_x), np.array(all_t), np.array(y_list), rcount=rcount, ccount=ccount, facecolors=colors, shade=False)
             surf.set_facecolor((0, 0, 0, 0))
             ax.set_xlabel('x')
@@ -246,7 +246,7 @@ class BurgersInterface(parapint.interfaces.MPIDynamicSchurComplementInteriorPoin
             plt.close()
 
             fig = plt.figure()
-            ax = fig.gca(projection='3d')
+            ax = fig.add_subplot(111, projection='3d')
             surf = ax.plot_surface(np.array(all_x), np.array(all_t), np.array(u_list), rcount=rcount, ccount=ccount, facecolors=colors, shade=False)
             surf.set_facecolor((0, 0, 0, 0))
             ax.set_xlabel('x')

@@ -1,13 +1,14 @@
 import unittest
 import parapint
-from nose.plugins.attrib import attr
+import pytest
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 from parapint.linalg import ScipyInterface
 from scipy.sparse import coo_matrix
 import numpy as np
 
 
-@attr(parallel=False, speed='fast')
+@pytest.mark.serial
+@pytest.mark.fast
 class TestSchurComplement(unittest.TestCase):
     def test_schur_complement(self):
         A = BlockMatrix(4, 4)

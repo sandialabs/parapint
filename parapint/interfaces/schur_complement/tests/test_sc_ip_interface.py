@@ -3,7 +3,7 @@ from pyomo.core.base.block import _BlockData
 import math
 from pyomo.opt.results import assert_optimal_termination
 import unittest
-from nose.plugins.attrib import attr
+import pytest
 import parapint
 from typing import Tuple, Sequence
 from pyomo.core.base.var import _GeneralVarData
@@ -146,7 +146,8 @@ class Problem(parapint.interfaces.DynamicSchurComplementInteriorPointInterface):
         return m, start_states, end_states
 
 
-@attr(parallel=False, speed='fast')
+@pytest.mark.serial
+@pytest.mark.fast
 class TestSCIPInterface(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -420,7 +421,8 @@ class TestSCIPInterface(unittest.TestCase):
         self.assertTrue(np.allclose(expected, got))
 
 
-@attr(parallel=False, speed='medium')
+@pytest.mark.serial
+@pytest.mark.medium
 class TestSCIPInterfaceWithSolve(unittest.TestCase):
     def test_kkt_system(self):
         t0 = 0

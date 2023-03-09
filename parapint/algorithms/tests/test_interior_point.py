@@ -1,4 +1,5 @@
 import unittest
+import pytest
 import pyomo.environ as pe
 from pyomo.common.dependencies import attempt_import
 import numpy as np
@@ -52,31 +53,43 @@ class TestSolveInteriorPoint(unittest.TestCase):
         interface.load_primals_into_pyomo_model()
         self.assertAlmostEqual(m.x.value, 1)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_ip1_scipy(self):
         solver = parapint.linalg.ScipyInterface()
         solver.compute_inertia = True
         self._test_solve_interior_point_1(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_ip2_scipy(self):
         solver = parapint.linalg.ScipyInterface()
         solver.compute_inertia = True
         self._test_solve_interior_point_2(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'Mumps is not available')
     def test_ip1_mumps(self):
         solver = parapint.linalg.MumpsInterface()
         self._test_solve_interior_point_1(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'Mumps is not available')
     def test_ip2_mumps(self):
         solver = parapint.linalg.MumpsInterface()
         self._test_solve_interior_point_2(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not ma27_available, 'MA27 is not available')
     def test_ip1_ma27(self):
         solver = parapint.linalg.InteriorPointMA27Interface()
         self._test_solve_interior_point_1(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not ma27_available, 'MA27 is not available')
     def test_ip2_ma27(self):
         solver = parapint.linalg.InteriorPointMA27Interface()
@@ -84,6 +97,8 @@ class TestSolveInteriorPoint(unittest.TestCase):
 
 
 class TestProcessInit(unittest.TestCase):
+    @pytest.mark.serial
+    @pytest.mark.fast
     def testprocess_init(self):
         lb = np.array([-np.inf, -np.inf,     -2, -2], dtype=np.double)
         ub = np.array([ np.inf,       2, np.inf,  2], dtype=np.double)
@@ -108,6 +123,8 @@ class TestProcessInit(unittest.TestCase):
         process_init(x, lb, ub)
         self.assertTrue(np.allclose(x, np.array([3, 1, 3, 0], dtype=np.double)))
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def testprocess_init_duals(self):
         x = np.array([0, 0, 0, 0], dtype=np.double)
         lb = np.array([-5, 0, -np.inf, 2], dtype=np.double)
@@ -125,6 +142,8 @@ class TestProcessInit(unittest.TestCase):
 
         
 class TestFractionToTheBoundary(unittest.TestCase):
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_fraction_to_the_boundary_helper_lb(self):
         tau = 0.9
         x = np.array([0, 0, 0, 0], dtype=np.double)
@@ -158,6 +177,8 @@ class TestFractionToTheBoundary(unittest.TestCase):
         alpha = _fraction_to_the_boundary_helper_lb(tau, x, delta_x, xl)
         self.assertAlmostEqual(alpha, 0.09)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_fraction_to_the_boundary_helper_ub(self):
         tau = 0.9
         x = np.array([0, 0, 0, 0], dtype=np.double)
