@@ -1,4 +1,5 @@
 import unittest
+import pytest
 import pyomo.environ as pe
 from pyomo.core.base import ConcreteModel, Var, Constraint, Objective
 from pyomo.common.dependencies import attempt_import
@@ -67,15 +68,21 @@ class TestRegularization(unittest.TestCase):
         self.assertEqual(n_null_evals, 0)
         self.assertEqual(n_neg_evals, desired_n_neg_evals)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'Mumps is not available')
     def test_mumps(self):
         solver = parapint.linalg.MumpsInterface()
         self._test_regularization(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_scipy(self):
         solver = parapint.linalg.ScipyInterface(compute_inertia=True)
         self._test_regularization(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not ma27_available, 'MA27 is not available')
     def test_ma27(self):
         solver = parapint.linalg.InteriorPointMA27Interface(icntl_options={1: 0, 2: 0})
@@ -94,15 +101,21 @@ class TestRegularization(unittest.TestCase):
         self.assertAlmostEqual(m.x.value, 1)
         self.assertAlmostEqual(m.y.value, pe.exp(-1))
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'Mumps is not available')
     def test_mumps_2(self):
         solver = parapint.linalg.MumpsInterface()
         self._test_regularization_2(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     def test_scipy_2(self):
         solver = parapint.linalg.ScipyInterface(compute_inertia=True)
         self._test_regularization_2(solver)
 
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not ma27_available, 'MA27 is not available')
     def test_ma27_2(self):
         solver = parapint.linalg.InteriorPointMA27Interface(icntl_options={1: 0, 2: 0})

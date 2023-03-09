@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from pyomo.common.dependencies import attempt_import
 import numpy as np
 from scipy.sparse import coo_matrix
@@ -7,6 +8,8 @@ mumps, mumps_available = attempt_import('mumps')
 
 
 class TestReallocation(unittest.TestCase):
+    @pytest.mark.serial
+    @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'mumps is not available')
     def test_reallocate_memory_mumps(self):
 

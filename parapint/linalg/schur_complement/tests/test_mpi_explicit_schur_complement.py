@@ -1,6 +1,6 @@
 import unittest
 import parapint
-from nose.plugins.attrib import attr
+import pytest
 from pyomo.contrib.pynumero.sparse import BlockMatrix, BlockVector
 from pyomo.contrib.pynumero.sparse.mpi_block_matrix import MPIBlockMatrix
 from pyomo.contrib.pynumero.sparse.mpi_block_vector import MPIBlockVector
@@ -16,7 +16,9 @@ size = comm.Get_size()
 
 
 class TestSchurComplement(unittest.TestCase):
-    @attr(parallel=True, speed='fast', n_procs='all')
+    @pytest.mark.parallel
+    @pytest.mark.fast
+    @pytest.mark.all_proc
     def test_mpi_schur_complement(self):
         rank_by_index = list()
         for ndx in range(3):
