@@ -58,10 +58,7 @@ class TestExamples(unittest.TestCase):
 
     @pytest.mark.parallel
     @pytest.mark.slow
-    @pytest.mark.serial
-    @pytest.mark.one_proc
-    @pytest.mark.two_proc
-    @pytest.mark.three_proc
+    @pytest.mark.all_proc
     def test_burgers(self):
         comm: MPI.Comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -90,10 +87,7 @@ class TestExamples(unittest.TestCase):
 
     @pytest.mark.parallel
     @pytest.mark.medium
-    @pytest.mark.serial
-    @pytest.mark.one_proc
-    @pytest.mark.two_proc
-    @pytest.mark.three_proc
+    @pytest.mark.all_proc
     def test_schur_complement_psc(self):
         class Args:
             def __init__(self):
