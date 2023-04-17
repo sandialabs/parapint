@@ -116,6 +116,7 @@ class IPOptions(ConfigDict):
         self.declare('tol', ConfigValue(domain=PositiveFloat))
         self.declare('init_barrier_parameter', ConfigValue(domain=PositiveFloat))
         self.declare('minimum_barrier_parameter', ConfigValue(domain=PositiveFloat))
+        self.declare('barrier_decrease', ConfigValue(domain=PositiveFloat))
         self.declare('report_timing', ConfigValue(domain=bool))
         self.declare('use_inertia_correction', ConfigValue(domain=bool))
         self.declare('inertia_correction', InertiaCorrectionOptions())
@@ -124,7 +125,8 @@ class IPOptions(ConfigDict):
         self.max_iter = 100
         self.tol = 1e-8
         self.init_barrier_parameter = 0.1
-        self.minimum_barrier_parameter = 1e-9
+        self.minimum_barrier_parameter = 1e-12
+        self.barrier_decrease = 10
         self.report_timing = False
         self.use_inertia_correction = True
         self.inertia_correction = InertiaCorrectionOptions()
@@ -428,7 +430,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
                                                                       timer=timer)
         timer.stop('convergence check')
         if max(primal_inf, dual_inf, complimentarity_inf) \
-                <= 0.1 * barrier_parameter:
+                <= options.barrier_decrease * barrier_parameter:
             barrier_parameter = max(options.minimum_barrier_parameter,
                                     min(0.5 * barrier_parameter, barrier_parameter ** 1.5))
 
