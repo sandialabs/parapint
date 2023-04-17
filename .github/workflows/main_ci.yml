@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyomo numpy scipy codecov coverage matplotlib pybind11 pytest
+        pip install pyomo numpy scipy coverage matplotlib pybind11 pytest
         conda install openmpi pymumps ipopt --no-update-deps
         pip install mpi4py
         pyomo download-extensions
