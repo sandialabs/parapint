@@ -165,7 +165,7 @@ class IPOptions(ConfigDict):
         self.inertia_correction = InertiaCorrectionOptions()
         self.linalg = LinalgOptions()
         self.line_search: LineSearchOptions = LineSearchOptions()
-        self.unified_step: bool = True
+        self.unified_step: bool = False
         self.error_scaling: float = 100
 
 
