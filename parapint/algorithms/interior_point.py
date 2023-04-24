@@ -88,6 +88,33 @@ class LinalgOptions(ConfigDict):
         self.max_num_reallocations = 5
 
 
+class LineSearchOptions(ConfigDict):
+    """
+    Attributes
+    ----------
+    max_iter: int
+    disable: bool
+    """
+    def __init__(self,
+                 description=None,
+                 doc=None,
+                 implicit=False,
+                 implicit_domain=None,
+                 visibility=0):
+        super().__init__(description=description,
+                         doc=doc,
+                         implicit=implicit,
+                         implicit_domain=implicit_domain,
+                         visibility=visibility)
+        self.declare('max_iter', ConfigValue(domain=NonNegativeInt))
+        self.declare('disable', ConfigValue(domain=bool))
+        self.declare('step_anyway', ConfigValue(domain=bool))
+
+        self.max_iter: int = 4
+        self.disable: bool = True
+        self.step_anyway: bool = True
+
+
 class IPOptions(ConfigDict):
     """
     Attributes
@@ -100,6 +127,9 @@ class IPOptions(ConfigDict):
     use_inertia_correction: bool
     inertia_correction: InertiaCorrectionOptions
     linalg: LinalgOptions
+    line_search: LineSearchOptions
+    unified_step: bool
+    error_scaling: float
     """
     def __init__(self,
                  description=None,
@@ -121,6 +151,9 @@ class IPOptions(ConfigDict):
         self.declare('use_inertia_correction', ConfigValue(domain=bool))
         self.declare('inertia_correction', InertiaCorrectionOptions())
         self.declare('linalg', LinalgOptions())
+        self.declare('line_search', LineSearchOptions())
+        self.declare('unified_step', ConfigValue(domain=bool))
+        self.declare('error_scaling', ConfigValue(domain=PositiveFloat))
 
         self.max_iter = 100
         self.tol = 1e-8
@@ -131,9 +164,12 @@ class IPOptions(ConfigDict):
         self.use_inertia_correction = True
         self.inertia_correction = InertiaCorrectionOptions()
         self.linalg = LinalgOptions()
+        self.line_search: LineSearchOptions = LineSearchOptions()
+        self.unified_step: bool = True
+        self.error_scaling: float = 100
 
 
-def check_convergence(interface, barrier, timer=None):
+def check_convergence(interface, barrier, error_scaling: float, timer=None):
     """
     Parameters
     ----------
@@ -246,7 +282,54 @@ def check_convergence(interface, barrier, timer=None):
     complimentarity_inf = max(max_primals_lb_resid, max_primals_ub_resid,
                               max_slacks_lb_resid, max_slacks_ub_resid)
 
-    return primal_inf, dual_inf, complimentarity_inf
+    dual_scaling = ((
+        np.abs(duals_eq).sum()
+        + np.abs(duals_ineq).sum()
+        + np.abs(duals_primals_lb).sum()
+        + np.abs(duals_primals_ub).sum()
+        + np.abs(duals_slacks_lb).sum()
+        + np.abs(duals_slacks_ub).sum()
+    ) / (
+        duals_eq.size
+        + duals_ineq.size
+        + np.isfinite(primals_lb).sum()
+        + np.isfinite(primals_ub).sum()
+        + np.isfinite(ineq_lb).sum()
+        + np.isfinite(ineq_ub).sum()
+    ))
+    dual_scaling = max(error_scaling, dual_scaling) / error_scaling
+
+    compl_scaling = ((
+        np.abs(duals_primals_lb).sum()
+        + np.abs(duals_primals_ub).sum()
+        + np.abs(duals_slacks_lb).sum()
+        + np.abs(duals_slacks_ub).sum()
+    ) / (
+        np.isfinite(primals_lb).sum()
+        + np.isfinite(primals_ub).sum()
+        + np.isfinite(ineq_lb).sum()
+        + np.isfinite(ineq_ub).sum()
+    ))
+    compl_scaling = max(error_scaling, compl_scaling) / error_scaling
+
+    return primal_inf, dual_inf/dual_scaling, complimentarity_inf/compl_scaling
+
+
+def line_search(
+    interface: BaseInteriorPointInterface,
+    barrier: float,
+    options: LineSearchOptions,
+    delta_primals,
+    delta_slacks,
+    delta_duals_eq,
+    delta_duals_ineq,
+    delta_duals_primals_lb,
+    delta_duals_primals_ub,
+    delta_duals_slacks_lb,
+    delta_duals_slacks_ub,
+    timer: Optional[HierarchicalTimer] = None,
+) -> Optional[float]:
+    raise NotImplementedError('This is just a placeholder for a line search')
 
 
 def numeric_factorization(interface: BaseInteriorPointInterface,
@@ -363,6 +446,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
 
     alpha_primal_max = 1
     alpha_dual_max = 1
+    alpha = 1
 
     logger.info('{_iter:<6}'
                 '{objective:<11}'
@@ -372,6 +456,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
                 '{barrier:<11}'
                 '{alpha_p:<11}'
                 '{alpha_d:<11}'
+                '{alpha:<11}'
                 '{reg:<11}'
                 '{time:<7}'.format(_iter='Iter',
                                    objective='Objective',
@@ -381,6 +466,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
                                    barrier='Barrier',
                                    alpha_p='Prim Step',
                                    alpha_d='Dual Step',
+                                   alpha='LS Step',
                                    reg='Reg',
                                    time='Time'))
 
@@ -398,7 +484,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
         interface.set_duals_slacks_ub(duals_slacks_ub)
 
         timer.start('convergence check')
-        primal_inf, dual_inf, complimentarity_inf = check_convergence(interface=interface, barrier=0, timer=timer)
+        primal_inf, dual_inf, complimentarity_inf = check_convergence(interface=interface, barrier=0, error_scaling=options.error_scaling, timer=timer)
         timer.stop('convergence check')
         objective = interface.evaluate_objective()
         logger.info('{_iter:<6}'
@@ -409,6 +495,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
                     '{barrier:<11.2e}'
                     '{alpha_p:<11.2e}'
                     '{alpha_d:<11.2e}'
+                    '{alpha:<11.2e}'
                     '{reg:<11.2e}'
                     '{time:<7.3f}'.format(_iter=_iter,
                                           objective=objective,
@@ -418,6 +505,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
                                           barrier=barrier_parameter,
                                           alpha_p=alpha_primal_max,
                                           alpha_d=alpha_dual_max,
+                                          alpha=alpha,
                                           reg=used_inertia_coef,
                                           time=time.time() - t0))
 
@@ -427,6 +515,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
         timer.start('convergence check')
         primal_inf, dual_inf, complimentarity_inf = check_convergence(interface=interface,
                                                                       barrier=barrier_parameter,
+                                                                      error_scaling=options.error_scaling,
                                                                       timer=timer)
         timer.stop('convergence check')
         if max(primal_inf, dual_inf, complimentarity_inf) \
@@ -476,7 +565,12 @@ def ip_solve(interface: BaseInteriorPointInterface,
         interface.set_primal_dual_kkt_solution(delta)
         timer.start('frac boundary')
         alpha_primal_max, alpha_dual_max = fraction_to_the_boundary(interface=interface, tau=1 - barrier_parameter)
+        if options.unified_step:
+            tmp = min(alpha_primal_max, alpha_dual_max)
+            alpha_primal_max = tmp
+            alpha_dual_max = tmp
         timer.stop('frac boundary')
+
         delta_primals = interface.get_delta_primals()
         delta_slacks = interface.get_delta_slacks()
         delta_duals_eq = interface.get_delta_duals_eq()
@@ -486,14 +580,46 @@ def ip_solve(interface: BaseInteriorPointInterface,
         delta_duals_slacks_lb = interface.get_delta_duals_slacks_lb()
         delta_duals_slacks_ub = interface.get_delta_duals_slacks_ub()
 
-        primals += alpha_primal_max * delta_primals
-        slacks += alpha_primal_max * delta_slacks
-        duals_eq += alpha_dual_max * delta_duals_eq
-        duals_ineq += alpha_dual_max * delta_duals_ineq
-        duals_primals_lb += alpha_dual_max * delta_duals_primals_lb
-        duals_primals_ub += alpha_dual_max * delta_duals_primals_ub
-        duals_slacks_lb += alpha_dual_max * delta_duals_slacks_lb
-        duals_slacks_ub += alpha_dual_max * delta_duals_slacks_ub
+        delta_primals *= alpha_primal_max
+        delta_slacks *= alpha_primal_max
+        delta_duals_eq *= alpha_dual_max
+        delta_duals_ineq *= alpha_dual_max
+        delta_duals_primals_lb *= alpha_dual_max
+        delta_duals_primals_ub *= alpha_dual_max
+        delta_duals_slacks_lb *= alpha_dual_max
+        delta_duals_slacks_ub *= alpha_dual_max
+
+        if options.line_search.disable:
+            alpha = 1
+        else:
+            alpha = line_search(
+                interface,
+                barrier_parameter,
+                options.line_search,
+                delta_primals,
+                delta_slacks,
+                delta_duals_eq,
+                delta_duals_ineq,
+                delta_duals_primals_lb,
+                delta_duals_primals_ub,
+                delta_duals_slacks_lb,
+                delta_duals_slacks_ub,
+                timer,
+            )
+
+            if alpha is None:
+                logger.warning('line search failed')
+                status = InteriorPointStatus.error
+                break
+
+        primals += alpha * delta_primals
+        slacks += alpha * delta_slacks
+        duals_eq += alpha * delta_duals_eq
+        duals_ineq += alpha * delta_duals_ineq
+        duals_primals_lb += alpha * delta_duals_primals_lb
+        duals_primals_ub += alpha * delta_duals_primals_ub
+        duals_slacks_lb += alpha * delta_duals_slacks_lb
+        duals_slacks_ub += alpha * delta_duals_slacks_ub
 
     timer.stop('IP solve')
     if options.report_timing:
