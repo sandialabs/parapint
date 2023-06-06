@@ -8,6 +8,7 @@ from pyomo.core.base.block import _BlockData
 from pyomo.core.base.var import _GeneralVarData
 from pyomo.core.base.constraint import _GeneralConstraintData
 from pyomo.common.timing import HierarchicalTimer
+from pyomo.common.collections import ComponentSet
 
 
 class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, metaclass=ABCMeta):
@@ -159,7 +160,8 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
                                                            start_t=_start_t,
                                                            end_t=_end_t,
                                                            add_init_conditions=add_init_conditions)
-            self._nlps[ndx] = nlp = InteriorPointInterface(pyomo_model=pyomo_model)
+            linking_vars = [v for v in start_states] + [v for v in end_states if v not in ComponentSet(start_states)]
+            self._nlps[ndx] = nlp = InteriorPointInterface(pyomo_model=pyomo_model, export_nonlinear_variables=linking_vars)
             assert len(start_states) == len(end_states)
             if self._num_states is not None:
                 assert self._num_states == len(start_states)

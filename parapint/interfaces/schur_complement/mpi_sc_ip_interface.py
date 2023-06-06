@@ -7,6 +7,7 @@ from pyomo.contrib.pynumero.sparse import BlockVector, BlockMatrix
 import numpy as np
 from typing import Dict, Optional, Sequence
 from pyomo.common.timing import HierarchicalTimer
+from pyomo.common.collections import ComponentSet
 from mpi4py import MPI
 from .sc_ip_interface import DynamicSchurComplementInteriorPointInterface, StochasticSchurComplementInteriorPointInterface
 
@@ -197,7 +198,8 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
                                                            start_t=_start_t,
                                                            end_t=_end_t,
                                                            add_init_conditions=add_init_conditions)
-            self._nlps[ndx] = nlp = InteriorPointInterface(pyomo_model=pyomo_model)
+            linking_vars = [v for v in start_states] + [v for v in end_states if v not in ComponentSet(start_states)]
+            self._nlps[ndx] = nlp = InteriorPointInterface(pyomo_model=pyomo_model, export_nonlinear_variables=linking_vars)
             assert len(start_states) == len(end_states)
             if self._num_states is not None:
                 assert self._num_states == len(start_states)
