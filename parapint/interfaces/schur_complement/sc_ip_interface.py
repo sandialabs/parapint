@@ -159,7 +159,9 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
                                                            start_t=_start_t,
                                                            end_t=_end_t,
                                                            add_init_conditions=add_init_conditions)
-            self._nlps[ndx] = nlp = InteriorPointInterface(pyomo_model=pyomo_model)
+            start_stale_names = [v.name for v in start_states if v.stale]
+            stale_vars = [v for v in start_states if v.stale] + [v for v in end_states if v.stale and v.name not in start_stale_names]
+            self._nlps[ndx] = nlp = InteriorPointInterface(pyomo_model=pyomo_model, export_nonlinear_variables=stale_vars)
             assert len(start_states) == len(end_states)
             if self._num_states is not None:
                 assert self._num_states == len(start_states)

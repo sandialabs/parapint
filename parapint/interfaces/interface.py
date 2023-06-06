@@ -240,12 +240,12 @@ class BaseInteriorPointInterface(ABC):
 
 
 class InteriorPointInterface(BaseInteriorPointInterface):
-    def __init__(self, pyomo_model):
+    def __init__(self, pyomo_model, export_nonlinear_variables = []):
         if type(pyomo_model) is str:
             # Assume argument is the name of an nl file
             self._nlp = ampl_nlp.AmplNLP(pyomo_model)
         else:
-            self._nlp = pyomo_nlp.PyomoNLP(pyomo_model, nl_file_options={'skip_trivial_constraints': True})
+            self._nlp = pyomo_nlp.PyomoNLP(pyomo_model, nl_file_options={'skip_trivial_constraints': True, 'export_nonlinear_variables': export_nonlinear_variables})
         self._slacks = self.init_slacks()
 
         # set the init_duals_primals_lb/ub from ipopt_zL_out, ipopt_zU_out if available
