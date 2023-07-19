@@ -54,7 +54,7 @@ class InertiaCorrectionOptions(ConfigDict):
         self.declare('factor_decrease', ConfigValue(domain=PositiveFloat))
         self.declare('max_coef', ConfigValue(domain=PositiveFloat))
 
-        self.init_coef = 1e-4
+        self.init_coef = 1e-8
         self.factor_increase = 10
         self.factor_decrease = 1/3
         self.max_coef = 1e9
@@ -156,7 +156,7 @@ class IPOptions(ConfigDict):
         self.declare('error_scaling', ConfigValue(domain=PositiveFloat))
         self.declare('bounds_push_factor', ConfigValue(domain=NonNegativeFloat))
 
-        self.max_iter = 100
+        self.max_iter = 1000
         self.tol = 1e-8
         self.init_barrier_parameter = 0.1
         self.minimum_barrier_parameter = 1e-9
