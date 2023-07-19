@@ -102,8 +102,8 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
         self._setup_jacs()
         self._setup_kkt_and_rhs_structure()
 
-        self._bounds_push_factor = 0
-        self.set_bounds_push_factor(self._bounds_push_factor)
+        self._bounds_relaxation_factor = 0
+        self.set_bounds_relaxation_factor(self._bounds_relaxation_factor)
 
     @abstractmethod
     def build_model_for_time_block(self,
@@ -490,13 +490,13 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
     def nnz_hessian_lag(self) -> int:
         raise NotImplementedError('This is not done yet')
 
-    def get_bounds_push_factor(self) -> float:
-        return self._bounds_push_factor
+    def get_bounds_relaxation_factor(self) -> float:
+        return self._bounds_relaxation_factor
 
-    def set_bounds_push_factor(self, val: float):
-        self._bounds_push_factor = val
+    def set_bounds_relaxation_factor(self, val: float):
+        self._bounds_relaxation_factor = val
         for nlp in self._nlps.values():
-            nlp.set_bounds_push_factor(val)
+            nlp.set_bounds_relaxation_factor(val)
 
     def primals_lb(self) -> BlockVector:
         """

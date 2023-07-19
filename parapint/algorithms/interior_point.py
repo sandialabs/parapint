@@ -154,7 +154,7 @@ class IPOptions(ConfigDict):
         self.declare('line_search', LineSearchOptions())
         self.declare('unified_step', ConfigValue(domain=bool))
         self.declare('error_scaling', ConfigValue(domain=PositiveFloat))
-        self.declare('bounds_push_factor', ConfigValue(domain=NonNegativeFloat))
+        self.declare('bounds_relaxation_factor', ConfigValue(domain=NonNegativeFloat))
 
         self.max_iter = 1000
         self.tol = 1e-8
@@ -168,7 +168,7 @@ class IPOptions(ConfigDict):
         self.line_search: LineSearchOptions = LineSearchOptions()
         self.unified_step: bool = False
         self.error_scaling: float = 100
-        self.bounds_push_factor: float = 1e-8
+        self.bounds_relaxation_factor: float = 1e-8
 
 
 def check_convergence(interface, barrier, error_scaling: float, timer=None):
@@ -423,7 +423,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
     timer.start('IP solve')
     timer.start('init')
 
-    interface.set_bounds_push_factor(options.bounds_push_factor)
+    interface.set_bounds_relaxation_factor(options.bounds_relaxation_factor)
 
     barrier_parameter = options.init_barrier_parameter
     inertia_coef = options.inertia_correction.init_coef

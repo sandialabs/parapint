@@ -13,11 +13,11 @@ class BaseInteriorPointInterface(ABC):
     """
 
     @abstractmethod
-    def get_bounds_push_factor(self) -> float:
+    def get_bounds_relaxation_factor(self) -> float:
         pass
 
     @abstractmethod
-    def set_bounds_push_factor(self, val: float):
+    def set_bounds_relaxation_factor(self, val: float):
         pass
 
     @abstractmethod
@@ -255,7 +255,7 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         else:
             self._nlp = pyomo_nlp.PyomoNLP(pyomo_model, nl_file_options={'skip_trivial_constraints': True})
 
-        self.bounds_push_factor = 0
+        self.bounds_relaxation_factor = 0
 
         self._slacks = self.init_slacks()
 
@@ -287,11 +287,11 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         self._delta_duals_ineq = None
         self._barrier = None
 
-    def get_bounds_push_factor(self) -> float:
-        return self.bounds_push_factor
+    def get_bounds_relaxation_factor(self) -> float:
+        return self.bounds_relaxation_factor
 
-    def set_bounds_push_factor(self, val: float):
-        self.bounds_push_factor = val
+    def set_bounds_relaxation_factor(self, val: float):
+        self.bounds_relaxation_factor = val
 
     def n_primals(self):
         return self._nlp.n_primals()
@@ -393,34 +393,34 @@ class InteriorPointInterface(BaseInteriorPointInterface):
 
     def primals_lb(self):
         lbs = self._nlp.primals_lb()
-        if self.bounds_push_factor == 0:
+        if self.bounds_relaxation_factor == 0:
             return lbs
         eye = np.ones(lbs.size)
-        lbs_mod = lbs - self.bounds_push_factor * np.max(np.array([eye, np.abs(lbs)]), axis=0)
+        lbs_mod = lbs - self.bounds_relaxation_factor * np.max(np.array([eye, np.abs(lbs)]), axis=0)
         return lbs_mod
 
     def primals_ub(self):
         ubs = self._nlp.primals_ub()
-        if self.bounds_push_factor == 0:
+        if self.bounds_relaxation_factor == 0:
             return ubs
         eye = np.ones(ubs.size)
-        ubs_mod = ubs + self.bounds_push_factor * np.max(np.array([eye, np.abs(ubs)]), axis=0)
+        ubs_mod = ubs + self.bounds_relaxation_factor * np.max(np.array([eye, np.abs(ubs)]), axis=0)
         return ubs_mod
 
     def ineq_lb(self):
         lbs = self._nlp.ineq_lb()
-        if self.bounds_push_factor == 0:
+        if self.bounds_relaxation_factor == 0:
             return lbs
         eye = np.ones(lbs.size)
-        lbs_mod = lbs - self.bounds_push_factor * np.max(np.array([eye, np.abs(lbs)]), axis=0)
+        lbs_mod = lbs - self.bounds_relaxation_factor * np.max(np.array([eye, np.abs(lbs)]), axis=0)
         return lbs_mod
 
     def ineq_ub(self):
         ubs = self._nlp.ineq_ub()
-        if self.bounds_push_factor == 0:
+        if self.bounds_relaxation_factor == 0:
             return ubs
         eye = np.ones(ubs.size)
-        ubs_mod = ubs + self.bounds_push_factor * np.max(np.array([eye, np.abs(ubs)]), axis=0)
+        ubs_mod = ubs + self.bounds_relaxation_factor * np.max(np.array([eye, np.abs(ubs)]), axis=0)
         return ubs_mod
 
     def set_barrier_parameter(self, barrier):
