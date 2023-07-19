@@ -8,7 +8,7 @@ import enum
 from parapint.interfaces.interface import BaseInteriorPointInterface
 from parapint.linalg.base_linear_solver_interface import LinearSolverInterface
 from typing import Optional
-from pyomo.common.config import ConfigDict, ConfigValue, PositiveFloat, NonNegativeInt
+from pyomo.common.config import ConfigDict, ConfigValue, PositiveFloat, NonNegativeInt, NonNegativeFloat
 
 
 """
@@ -154,11 +154,12 @@ class IPOptions(ConfigDict):
         self.declare('line_search', LineSearchOptions())
         self.declare('unified_step', ConfigValue(domain=bool))
         self.declare('error_scaling', ConfigValue(domain=PositiveFloat))
+        self.declare('bounds_push_factor', ConfigValue(domain=NonNegativeFloat))
 
         self.max_iter = 100
         self.tol = 1e-8
         self.init_barrier_parameter = 0.1
-        self.minimum_barrier_parameter = 1e-12
+        self.minimum_barrier_parameter = 1e-9
         self.barrier_decrease = 10
         self.report_timing = False
         self.use_inertia_correction = True
@@ -167,6 +168,7 @@ class IPOptions(ConfigDict):
         self.line_search: LineSearchOptions = LineSearchOptions()
         self.unified_step: bool = False
         self.error_scaling: float = 100
+        self.bounds_push_factor: float = 1e-8
 
 
 def check_convergence(interface, barrier, error_scaling: float, timer=None):
@@ -420,6 +422,8 @@ def ip_solve(interface: BaseInteriorPointInterface,
 
     timer.start('IP solve')
     timer.start('init')
+
+    interface.set_bounds_push_factor(options.bounds_push_factor)
 
     barrier_parameter = options.init_barrier_parameter
     inertia_coef = options.inertia_correction.init_coef

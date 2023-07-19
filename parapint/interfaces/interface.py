@@ -13,6 +13,14 @@ class BaseInteriorPointInterface(ABC):
     """
 
     @abstractmethod
+    def get_bounds_push_factor(self) -> float:
+        pass
+
+    @abstractmethod
+    def set_bounds_push_factor(self, val: float):
+        pass
+
+    @abstractmethod
     def n_primals(self):
         pass
 
@@ -246,14 +254,17 @@ class InteriorPointInterface(BaseInteriorPointInterface):
             self._nlp = ampl_nlp.AmplNLP(pyomo_model)
         else:
             self._nlp = pyomo_nlp.PyomoNLP(pyomo_model, nl_file_options={'skip_trivial_constraints': True})
+
+        self.bounds_push_factor = 0
+
         self._slacks = self.init_slacks()
 
         # set the init_duals_primals_lb/ub from ipopt_zL_out, ipopt_zU_out if available
         # need to compress them as well and initialize the duals_primals_lb/ub 
         self._init_duals_primals_lb, self._init_duals_primals_ub =\
             self._get_full_duals_primals_bounds()
-        self._init_duals_primals_lb[np.isneginf(self._nlp.primals_lb())] = 0
-        self._init_duals_primals_ub[np.isinf(self._nlp.primals_ub())] = 0
+        self._init_duals_primals_lb[np.isneginf(self.primals_lb())] = 0
+        self._init_duals_primals_ub[np.isinf(self.primals_ub())] = 0
         self._duals_primals_lb = self._init_duals_primals_lb.copy()
         self._duals_primals_ub = self._init_duals_primals_ub.copy()
 
@@ -275,6 +286,12 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         self._delta_duals_eq = None
         self._delta_duals_ineq = None
         self._barrier = None
+
+    def get_bounds_push_factor(self) -> float:
+        return self.bounds_push_factor
+
+    def set_bounds_push_factor(self, val: float):
+        self.bounds_push_factor = val
 
     def n_primals(self):
         return self._nlp.n_primals()
@@ -375,16 +392,36 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         return self._duals_slacks_ub
 
     def primals_lb(self):
-        return self._nlp.primals_lb()
+        lbs = self._nlp.primals_lb()
+        if self.bounds_push_factor == 0:
+            return lbs
+        eye = np.ones(lbs.size)
+        lbs_mod = lbs - self.bounds_push_factor * np.max(np.array([eye, np.abs(lbs)]), axis=0)
+        return lbs_mod
 
     def primals_ub(self):
-        return self._nlp.primals_ub()
+        ubs = self._nlp.primals_ub()
+        if self.bounds_push_factor == 0:
+            return ubs
+        eye = np.ones(ubs.size)
+        ubs_mod = ubs + self.bounds_push_factor * np.max(np.array([eye, np.abs(ubs)]), axis=0)
+        return ubs_mod
 
     def ineq_lb(self):
-        return self._nlp.ineq_lb()
+        lbs = self._nlp.ineq_lb()
+        if self.bounds_push_factor == 0:
+            return lbs
+        eye = np.ones(lbs.size)
+        lbs_mod = lbs - self.bounds_push_factor * np.max(np.array([eye, np.abs(lbs)]), axis=0)
+        return lbs_mod
 
     def ineq_ub(self):
-        return self._nlp.ineq_ub()
+        ubs = self._nlp.ineq_ub()
+        if self.bounds_push_factor == 0:
+            return ubs
+        eye = np.ones(ubs.size)
+        ubs_mod = ubs + self.bounds_push_factor * np.max(np.array([eye, np.abs(ubs)]), axis=0)
+        return ubs_mod
 
     def set_barrier_parameter(self, barrier):
         self._barrier = barrier
@@ -410,8 +447,8 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         primals = self._nlp.get_primals()
 
         timer.start('hess block')
-        data = (duals_primals_lb/(primals - self._nlp.primals_lb()) +
-                duals_primals_ub/(self._nlp.primals_ub() - primals))
+        data = (duals_primals_lb/(primals - self.primals_lb()) +
+                duals_primals_ub/(self.primals_ub() - primals))
         n = self._nlp.n_primals()
         indices = np.arange(n)
         hess_block.row = np.concatenate([hess_block.row, indices])
@@ -420,8 +457,8 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         timer.stop('hess block')
 
         timer.start('slack block')
-        data = (duals_slacks_lb/(self._slacks - self._nlp.ineq_lb()) +
-                duals_slacks_ub/(self._nlp.ineq_ub() - self._slacks))
+        data = (duals_slacks_lb/(self._slacks - self.ineq_lb()) +
+                duals_slacks_ub/(self.ineq_ub() - self._slacks))
         n = self._nlp.n_ineq_constraints()
         indices = np.arange(n)
         slack_block = scipy.sparse.coo_matrix((data, (indices, indices)), shape=(n, n))
@@ -472,14 +509,14 @@ class InteriorPointInterface(BaseInteriorPointInterface):
         grad_lag_primals = (grad_obj +
                             jac_eq.transpose() * self._nlp.get_duals_eq() +
                             jac_ineq.transpose() * self._nlp.get_duals_ineq() -
-                            self._barrier / (self._nlp.get_primals() - self._nlp.primals_lb()) +
-                            self._barrier / (self._nlp.primals_ub() - self._nlp.get_primals()))
+                            self._barrier / (self._nlp.get_primals() - self.primals_lb()) +
+                            self._barrier / (self.primals_ub() - self._nlp.get_primals()))
         timer.stop('grad_lag_primals')
 
         timer.start('grad_lag_slacks')
         grad_lag_slacks = (-self._nlp.get_duals_ineq() -
-                           self._barrier / (self._slacks - self._nlp.ineq_lb()) +
-                           self._barrier / (self._nlp.ineq_ub() - self._slacks))
+                           self._barrier / (self._slacks - self.ineq_lb()) +
+                           self._barrier / (self.ineq_ub() - self._slacks))
         timer.stop('grad_lag_slacks')
 
         rhs = BlockVector(4)
@@ -510,25 +547,25 @@ class InteriorPointInterface(BaseInteriorPointInterface):
 
     def get_delta_duals_primals_lb(self):
         res = (((self._barrier - self._duals_primals_lb * self._delta_primals) /
-                (self._nlp.get_primals() - self._nlp.primals_lb())) -
+                (self._nlp.get_primals() - self.primals_lb())) -
                self._duals_primals_lb)
         return res
 
     def get_delta_duals_primals_ub(self):
         res = (((self._barrier + self._duals_primals_ub * self._delta_primals) /
-                (self._nlp.primals_ub() - self._nlp.get_primals())) -
+                (self.primals_ub() - self._nlp.get_primals())) -
                self._duals_primals_ub)
         return res
 
     def get_delta_duals_slacks_lb(self):
         res = (((self._barrier - self._duals_slacks_lb * self._delta_slacks) /
-                (self._slacks - self._nlp.ineq_lb())) -
+                (self._slacks - self.ineq_lb())) -
                self._duals_slacks_lb)
         return res
 
     def get_delta_duals_slacks_ub(self):
         res = (((self._barrier + self._duals_slacks_ub * self._delta_slacks) /
-                (self._nlp.ineq_ub() - self._slacks)) -
+                (self.ineq_ub() - self._slacks)) -
                self._duals_slacks_ub)
         return res
 
