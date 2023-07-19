@@ -135,6 +135,9 @@ class MPIDynamicSchurComplementInteriorPointInterface(DynamicSchurComplementInte
         self._setup_jacs()
         self._setup_kkt_and_rhs_structure()
 
+        self._bounds_relaxation_factor = 0
+        self.set_bounds_relaxation_factor(self._bounds_relaxation_factor)
+
     def _build_mpi_block_matrix(self, extra_row: bool = False, extra_col: bool = False) -> MPIBlockMatrix:
         if extra_row:
             nrows = self._num_time_blocks + 1
@@ -382,6 +385,9 @@ class MPIStochasticSchurComplementInteriorPointInterface(StochasticSchurCompleme
         self._setup_block_vectors()
         self._setup_jacs()
         self._setup_kkt_and_rhs_structure()
+
+        self._bounds_relaxation_factor = 0
+        self.set_bounds_relaxation_factor(self._bounds_relaxation_factor)
 
     def _build_mpi_block_matrix(self, extra_row: bool = False, extra_col: bool = False) -> MPIBlockMatrix:
         if extra_row:

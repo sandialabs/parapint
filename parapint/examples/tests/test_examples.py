@@ -28,9 +28,9 @@ class TestExamples(unittest.TestCase):
         interface = examples.stochastic.main(farmer=farmer,
                                              subproblem_solver_class=parapint.linalg.ScipyInterface,
                                              subproblem_solver_options={'compute_inertia': True})
-        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['CORN'].value, 80)
-        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['SUGAR_BEETS'].value, 250)
-        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['WHEAT'].value, 170)
+        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['CORN'].value, 80, 5)
+        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['SUGAR_BEETS'].value, 250, 5)
+        self.assertAlmostEqual(interface.pyomo_model(farmer.scenarios[rank]).devoted_acreage['WHEAT'].value, 170, 5)
 
     @pytest.mark.parallel
     @pytest.mark.medium

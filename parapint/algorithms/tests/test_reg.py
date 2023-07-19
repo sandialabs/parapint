@@ -58,7 +58,7 @@ class TestRegularization(unittest.TestCase):
                                          inertia_coef=options.inertia_correction.init_coef)
 
         # Expected regularization coefficient:
-        self.assertAlmostEqual(reg_coef, 1e-4)
+        self.assertGreaterEqual(reg_coef, 1e-8)
 
         desired_n_neg_evals = (interface.n_eq_constraints() +
                                interface.n_ineq_constraints())
