@@ -103,6 +103,9 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
         self._setup_jacs()
         self._setup_kkt_and_rhs_structure()
 
+        self._bounds_relaxation_factor = 0
+        self.set_bounds_relaxation_factor(self._bounds_relaxation_factor)
+
     @abstractmethod
     def build_model_for_time_block(self,
                                    ndx: int,
@@ -489,6 +492,14 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
     def nnz_hessian_lag(self) -> int:
         raise NotImplementedError('This is not done yet')
 
+    def get_bounds_relaxation_factor(self) -> float:
+        return self._bounds_relaxation_factor
+
+    def set_bounds_relaxation_factor(self, val: float):
+        self._bounds_relaxation_factor = val
+        for nlp in self._nlps.values():
+            nlp.set_bounds_relaxation_factor(val)
+
     def primals_lb(self) -> BlockVector:
         """
         Returns
@@ -497,6 +508,8 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             The lower bounds for each primal variable. This BlockVector has one block for every time block
             and one block for the coupling variables.
         """
+        for ndx, nlp in self._nlps.items():
+            self._primals_lb.set_block(ndx, nlp.primals_lb())
         return self._primals_lb
 
     def primals_ub(self) -> BlockVector:
@@ -507,6 +520,8 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
             The upper bounds for each primal variable. This BlockVector has one block for every time block
             and one block for the coupling variables.
         """
+        for ndx, nlp in self._nlps.items():
+            self._primals_ub.set_block(ndx, nlp.primals_ub())
         return self._primals_ub
 
     def init_primals(self) -> BlockVector:
@@ -603,6 +618,8 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
         ineq_lb: BlockVector
             The lower bounds for each inequality constraint. This BlockVector has one block for every time block.
         """
+        for ndx, nlp in self._nlps.items():
+            self._ineq_lb.set_block(ndx, nlp.ineq_lb())
         return self._ineq_lb
 
     def ineq_ub(self) -> BlockVector:
@@ -612,6 +629,8 @@ class DynamicSchurComplementInteriorPointInterface(BaseInteriorPointInterface, m
         ineq_lb: BlockVector
             The lower bounds for each inequality constraint. This BlockVector has one block for every time block.
         """
+        for ndx, nlp in self._nlps.items():
+            self._ineq_ub.set_block(ndx, nlp.ineq_ub())
         return self._ineq_ub
 
     def init_duals_eq(self) -> BlockVector:
@@ -1099,6 +1118,9 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
         self._setup_jacs()
         self._setup_kkt_and_rhs_structure()
 
+        self._bounds_relaxation_factor = 0
+        self.set_bounds_relaxation_factor(self._bounds_relaxation_factor)
+
     @abstractmethod
     def build_model_for_scenario(self,
                                  scenario_identifier: Any) -> Tuple[_BlockData, Dict[Any, _GeneralVarData]]:
@@ -1312,6 +1334,14 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
     def nnz_hessian_lag(self) -> int:
         raise NotImplementedError('This is not done yet')
 
+    def get_bounds_relaxation_factor(self) -> float:
+        return self._bounds_relaxation_factor
+
+    def set_bounds_relaxation_factor(self, val: float):
+        self._bounds_relaxation_factor = val
+        for nlp in self._nlps.values():
+            nlp.set_bounds_relaxation_factor(val)
+
     def primals_lb(self) -> BlockVector:
         """
         Returns
@@ -1320,6 +1350,8 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             The lower bounds for each primal variable. This BlockVector has one block for every time block
             and one block for the coupling variables.
         """
+        for ndx, nlp in self._nlps.items():
+            self._primals_lb.set_block(ndx, nlp.primals_lb())
         return self._primals_lb
 
     def primals_ub(self) -> BlockVector:
@@ -1330,6 +1362,8 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
             The upper bounds for each primal variable. This BlockVector has one block for every time block
             and one block for the coupling variables.
         """
+        for ndx, nlp in self._nlps.items():
+            self._primals_ub.set_block(ndx, nlp.primals_ub())
         return self._primals_ub
 
     def init_primals(self) -> BlockVector:
@@ -1426,6 +1460,8 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
         ineq_lb: BlockVector
             The lower bounds for each inequality constraint. This BlockVector has one block for every time block.
         """
+        for ndx, nlp in self._nlps.items():
+            self._ineq_lb.set_block(ndx, nlp.ineq_lb())
         return self._ineq_lb
 
     def ineq_ub(self) -> BlockVector:
@@ -1435,6 +1471,8 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
         ineq_lb: BlockVector
             The lower bounds for each inequality constraint. This BlockVector has one block for every time block.
         """
+        for ndx, nlp in self._nlps.items():
+            self._ineq_ub.set_block(ndx, nlp.ineq_ub())
         return self._ineq_ub
 
     def init_duals_eq(self) -> BlockVector:
