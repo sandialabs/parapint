@@ -54,11 +54,11 @@ class _BorderMatrix(object):
         for i, _row in enumerate(self.nonzero_rows):
             res[_row] = i
         return res
-    
+
     def _get_reduced_matrix(self):
         return self.csr[self.nonzero_rows, :]
-    
-    def _get_selection_matrix(self, format='csr'):
+
+    def _get_selection_matrix(self, format: str = 'csr'):
         data = np.ones(self.nonzero_rows.size, dtype=np.int64)
         row_idx = self.nonzero_rows
         col_idx = np.arange(self.nonzero_rows.size) # Note: assumes linear ordering
@@ -70,7 +70,7 @@ class _BorderMatrix(object):
     @property
     def num_nonzero_rows(self):
         return self.nonzero_rows.size
-    
+
     @property
     def reduced_matrix(self):
         return self.csr[self.nonzero_rows, :]
