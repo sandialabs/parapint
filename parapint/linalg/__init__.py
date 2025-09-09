@@ -5,3 +5,7 @@ from .ma27_interface import InteriorPointMA27Interface
 from .mumps_interface import MumpsInterface
 from .schur_complement.explicit_schur_complement import SchurComplementLinearSolver
 from .schur_complement.mpi_explicit_schur_complement import MPISchurComplementLinearSolver
+from .schur_complement.mpi_implicit_schur_complement import (
+    ImplicitSchurComplementPreconditionerType,
+    make_implicit_schur_complement_solver
+)
