@@ -27,7 +27,7 @@ jobs:
         conda list
         conda env list
         python -m pip install --upgrade pip
-        pip install pyomo numpy scipy coverage matplotlib pybind11 pytest
+        pip install setuptools pyomo numpy scipy coverage matplotlib pybind11 pytest
         CONDA_PACKAGES="openmpi ipopt"
         if [[ "${{ matrix.python-version }}" < "3.13" ]]; then
           CONDA_PACKAGES="$CONDA_PACKAGES pymumps"
