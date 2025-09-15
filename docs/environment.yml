@@ -11,3 +11,6 @@ dependencies:
     - mpi4py
     - pymumps
     - numpydoc
+    - sphinx
+    - sphinx-rtd-theme
+    - numpydoc
