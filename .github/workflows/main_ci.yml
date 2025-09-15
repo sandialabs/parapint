@@ -18,20 +18,19 @@ jobs:
     - name: setup conda
       uses: conda-incubator/setup-miniconda@v3
       with:
-        auto-update-conda: true
+        auto-update-conda: false
         python-version: ${{ matrix.python-version }}
         channels: conda-forge
-        activate-environment: cienv
     - name: Install dependencies
       run: |
-        conda activate cienv
+        conda list
+        conda env list
         python -m pip install --upgrade pip
         pip install pyomo numpy scipy coverage matplotlib pybind11 pytest
         CONDA_PACKAGES="openmpi ipopt"
         if [[ "${{ matrix.python-version }}" < "3.13" ]]; then
           CONDA_PACKAGES="$CONDA_PACKAGES pymumps"
         fi
-        conda list
         echo "installing $CONDA_PACKAGES"
         conda install $CONDA_PACKAGES --no-update-deps
         pip install mpi4py
@@ -40,7 +39,6 @@ jobs:
         pip install -e ./
     - name: Test with nose
       run: |
-        conda activate cienv
         coverage run --source=. --rcfile=setup.cfg -m pytest -v -m "serial or (parallel and (one_proc or all_proc))" ./
         mpirun -np 2 -oversubscribe coverage run --source=. --rcfile=setup.cfg -m mpi4py -m pytest -v -m "parallel and (two_proc or all_proc)" ./
         mpirun -np 3 -oversubscribe coverage run --source=. --rcfile=setup.cfg -m mpi4py -m pytest -v -m "parallel and (three_proc or all_proc)" ./
