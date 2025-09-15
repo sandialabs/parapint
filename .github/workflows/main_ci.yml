@@ -22,9 +22,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
         channels: conda-forge
     - name: Install dependencies
+      shell: bash -el {0}
       run: |
-        conda init
-        conda activate Test
         conda list
         conda env list
         python -m pip install --upgrade pip
@@ -40,6 +39,7 @@ jobs:
         pyomo build-extensions
         pip install -e ./
     - name: Test with nose
+      shell: bash -el {0}
       run: |
         coverage run --source=. --rcfile=setup.cfg -m pytest -v -m "serial or (parallel and (one_proc or all_proc))" ./
         mpirun -np 2 -oversubscribe coverage run --source=. --rcfile=setup.cfg -m mpi4py -m pytest -v -m "parallel and (two_proc or all_proc)" ./
