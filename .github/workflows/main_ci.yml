@@ -23,6 +23,8 @@ jobs:
         channels: conda-forge
     - name: Install dependencies
       run: |
+        conda init
+        conda activate Test
         conda list
         conda env list
         python -m pip install --upgrade pip
