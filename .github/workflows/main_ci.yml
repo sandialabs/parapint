@@ -12,7 +12,7 @@ jobs:
     strategy:
       max-parallel: 20
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
     - uses: actions/checkout@v5
     - name: setup conda
@@ -22,8 +22,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
         channels: conda-forge
         activate-environment: cienv
+      run: |
+        conda list
     - name: Install dependencies
       run: |
+        conda activate cienv
         python -m pip install --upgrade pip
         pip install pyomo numpy scipy coverage matplotlib pybind11 pytest
         CONDA_PACKAGES="openmpi ipopt"
@@ -39,6 +42,7 @@ jobs:
         pip install -e ./
     - name: Test with nose
       run: |
+        conda activate cienv
         coverage run --source=. --rcfile=setup.cfg -m pytest -v -m "serial or (parallel and (one_proc or all_proc))" ./
         mpirun -np 2 -oversubscribe coverage run --source=. --rcfile=setup.cfg -m mpi4py -m pytest -v -m "parallel and (two_proc or all_proc)" ./
         mpirun -np 3 -oversubscribe coverage run --source=. --rcfile=setup.cfg -m mpi4py -m pytest -v -m "parallel and (three_proc or all_proc)" ./
