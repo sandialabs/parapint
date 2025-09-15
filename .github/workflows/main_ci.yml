@@ -12,25 +12,34 @@ jobs:
     strategy:
       max-parallel: 20
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', '3.11']
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v5
     - name: setup conda
-      uses: s-weigand/setup-conda@v1
+      uses: conda-incubator/setup-miniconda@v3
       with:
-        update-conda: true
+        auto-update-conda: false
         python-version: ${{ matrix.python-version }}
-        conda-channels: anaconda, conda-forge
+        channels: conda-forge
     - name: Install dependencies
+      shell: bash -el {0}
       run: |
+        conda list
+        conda env list
         python -m pip install --upgrade pip
-        pip install pyomo numpy scipy coverage matplotlib pybind11 pytest
-        conda install openmpi pymumps ipopt --no-update-deps
+        pip install setuptools pyomo numpy scipy coverage matplotlib pybind11 pytest
+        CONDA_PACKAGES="openmpi ipopt"
+        if [[ "${{ matrix.python-version }}" < "3.13" ]]; then
+          CONDA_PACKAGES="$CONDA_PACKAGES pymumps"
+        fi
+        echo "installing $CONDA_PACKAGES"
+        conda install $CONDA_PACKAGES --no-update-deps
         pip install mpi4py
         pyomo download-extensions
         pyomo build-extensions
         pip install -e ./
     - name: Test with nose
+      shell: bash -el {0}
       run: |
         coverage run --source=. --rcfile=setup.cfg -m pytest -v -m "serial or (parallel and (one_proc or all_proc))" ./
         mpirun -np 2 -oversubscribe coverage run --source=. --rcfile=setup.cfg -m mpi4py -m pytest -v -m "parallel and (two_proc or all_proc)" ./
