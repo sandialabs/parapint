@@ -152,7 +152,7 @@ class TestLinearSolvers(unittest.TestCase):
         self._test_linear_solvers(solver)
         self._test_inertia_computation(solver)
 
-@unittest.skip('This does not work yet')
+
 class TestWrongNonzeroOrdering(unittest.TestCase):
     def _test_solvers(self, solver, use_tril):
         mat = get_base_matrix(use_tril=use_tril)
@@ -168,7 +168,7 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
     @pytest.mark.fast
     def test_scipy(self):
         solver = parapint.linalg.ScipyInterface()
-        self._test_solvers(solver, use_tril=False)
+        self._test_solvers(solver, use_tril=True)
 
     @pytest.mark.serial
     @pytest.mark.fast
