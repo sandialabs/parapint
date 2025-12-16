@@ -1741,6 +1741,8 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
                                              coef=coef,
                                              copy_kkt=False)
             ptb = coef * identity(self._num_first_stage_vars_by_scenario[ndx], format='coo')
+            # TODO: This regularization is not necessary as linking constraint has full rank.
+            # An option to disable/enable this might be useful.
             kkt.get_block(ndx, ndx).set_block(1, 1, ptb)
         return kkt
 
@@ -1753,6 +1755,9 @@ class StochasticSchurComplementInteriorPointInterface(BaseInteriorPointInterface
                                    copy_kkt=False)
         block = kkt.get_block(self._num_scenarios, self._num_scenarios)
         ptb = coef * identity(block.shape[0], format='coo')
+        # TODO: This regularization is not necessary as complicating variables only appear in linking constraints,
+        # thus they have no contribution to the Hessian of the Lagrangian.
+        # An option to disable/enable this might be useful.
         kkt.set_block(self._num_scenarios, self._num_scenarios, ptb)
         return kkt
 

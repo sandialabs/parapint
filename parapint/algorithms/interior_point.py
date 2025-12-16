@@ -1,15 +1,29 @@
-from pyomo.contrib.pynumero.interfaces.utils import build_bounds_mask, build_compression_matrix
-import numpy as np
+import enum
 import logging
 import time
-from parapint.linalg.results import LinearSolverStatus
+from typing import Optional
+
+import numpy as np
+from pyomo.common.config import (
+    ConfigDict,
+    ConfigValue,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+)
 from pyomo.common.timing import HierarchicalTimer
-import enum
+from pyomo.contrib.pynumero.interfaces.utils import (
+    build_bounds_mask,
+    build_compression_matrix,
+)
+
 from parapint.interfaces.interface import BaseInteriorPointInterface
 from parapint.linalg.base_linear_solver_interface import LinearSolverInterface
-from typing import Optional
-from pyomo.common.config import ConfigDict, ConfigValue, PositiveFloat, NonNegativeInt, NonNegativeFloat
-
+from parapint.linalg.results import LinearSolverStatus
+from parapint.linalg.iterative import PcgSolutionStatus
+from parapint.linalg.schur_complement.mpi_implicit_schur_complement import (
+    MPIBaseImplicitSchurComplementLinearSolver,
+)
 
 """
 Interface Requirements
@@ -38,25 +52,30 @@ class InertiaCorrectionOptions(ConfigDict):
     factor_decrease: float
     max_coef: float
     """
-    def __init__(self,
-                 description=None,
-                 doc=None,
-                 implicit=False,
-                 implicit_domain=None,
-                 visibility=0):
-        super().__init__(description=description,
-                         doc=doc,
-                         implicit=implicit,
-                         implicit_domain=implicit_domain,
-                         visibility=visibility)
-        self.declare('init_coef', ConfigValue(domain=PositiveFloat))
-        self.declare('factor_increase', ConfigValue(domain=PositiveFloat))
-        self.declare('factor_decrease', ConfigValue(domain=PositiveFloat))
-        self.declare('max_coef', ConfigValue(domain=PositiveFloat))
+
+    def __init__(
+        self,
+        description=None,
+        doc=None,
+        implicit=False,
+        implicit_domain=None,
+        visibility=0,
+    ):
+        super().__init__(
+            description=description,
+            doc=doc,
+            implicit=implicit,
+            implicit_domain=implicit_domain,
+            visibility=visibility,
+        )
+        self.declare("init_coef", ConfigValue(domain=PositiveFloat))
+        self.declare("factor_increase", ConfigValue(domain=PositiveFloat))
+        self.declare("factor_decrease", ConfigValue(domain=PositiveFloat))
+        self.declare("max_coef", ConfigValue(domain=PositiveFloat))
 
         self.init_coef = 1e-8
         self.factor_increase = 10
-        self.factor_decrease = 1/3
+        self.factor_decrease = 1 / 3
         self.max_coef = 1e9
 
 
@@ -68,20 +87,25 @@ class LinalgOptions(ConfigDict):
     reallocation_factor: float
     max_num_reallocations: int
     """
-    def __init__(self,
-                 description=None,
-                 doc=None,
-                 implicit=False,
-                 implicit_domain=None,
-                 visibility=0):
-        super().__init__(description=description,
-                         doc=doc,
-                         implicit=implicit,
-                         implicit_domain=implicit_domain,
-                         visibility=visibility)
-        self.declare('solver', ConfigValue())
-        self.declare('reallocation_factor', ConfigValue(domain=PositiveFloat))
-        self.declare('max_num_reallocations', ConfigValue(domain=NonNegativeInt))
+
+    def __init__(
+        self,
+        description=None,
+        doc=None,
+        implicit=False,
+        implicit_domain=None,
+        visibility=0,
+    ):
+        super().__init__(
+            description=description,
+            doc=doc,
+            implicit=implicit,
+            implicit_domain=implicit_domain,
+            visibility=visibility,
+        )
+        self.declare("solver", ConfigValue())
+        self.declare("reallocation_factor", ConfigValue(domain=PositiveFloat))
+        self.declare("max_num_reallocations", ConfigValue(domain=NonNegativeInt))
 
         self.solver = None
         self.reallocation_factor = 2
@@ -95,20 +119,25 @@ class LineSearchOptions(ConfigDict):
     max_iter: int
     disable: bool
     """
-    def __init__(self,
-                 description=None,
-                 doc=None,
-                 implicit=False,
-                 implicit_domain=None,
-                 visibility=0):
-        super().__init__(description=description,
-                         doc=doc,
-                         implicit=implicit,
-                         implicit_domain=implicit_domain,
-                         visibility=visibility)
-        self.declare('max_iter', ConfigValue(domain=NonNegativeInt))
-        self.declare('disable', ConfigValue(domain=bool))
-        self.declare('step_anyway', ConfigValue(domain=bool))
+
+    def __init__(
+        self,
+        description=None,
+        doc=None,
+        implicit=False,
+        implicit_domain=None,
+        visibility=0,
+    ):
+        super().__init__(
+            description=description,
+            doc=doc,
+            implicit=implicit,
+            implicit_domain=implicit_domain,
+            visibility=visibility,
+        )
+        self.declare("max_iter", ConfigValue(domain=NonNegativeInt))
+        self.declare("disable", ConfigValue(domain=bool))
+        self.declare("step_anyway", ConfigValue(domain=bool))
 
         self.max_iter: int = 4
         self.disable: bool = True
@@ -131,30 +160,35 @@ class IPOptions(ConfigDict):
     unified_step: bool
     error_scaling: float
     """
-    def __init__(self,
-                 description=None,
-                 doc=None,
-                 implicit=False,
-                 implicit_domain=None,
-                 visibility=0):
-        super().__init__(description=description,
-                         doc=doc,
-                         implicit=implicit,
-                         implicit_domain=implicit_domain,
-                         visibility=visibility)
-        self.declare('max_iter', ConfigValue(domain=NonNegativeInt))
-        self.declare('tol', ConfigValue(domain=PositiveFloat))
-        self.declare('init_barrier_parameter', ConfigValue(domain=PositiveFloat))
-        self.declare('minimum_barrier_parameter', ConfigValue(domain=PositiveFloat))
-        self.declare('barrier_decrease', ConfigValue(domain=PositiveFloat))
-        self.declare('report_timing', ConfigValue(domain=bool))
-        self.declare('use_inertia_correction', ConfigValue(domain=bool))
-        self.declare('inertia_correction', InertiaCorrectionOptions())
-        self.declare('linalg', LinalgOptions())
-        self.declare('line_search', LineSearchOptions())
-        self.declare('unified_step', ConfigValue(domain=bool))
-        self.declare('error_scaling', ConfigValue(domain=PositiveFloat))
-        self.declare('bounds_relaxation_factor', ConfigValue(domain=NonNegativeFloat))
+
+    def __init__(
+        self,
+        description=None,
+        doc=None,
+        implicit=False,
+        implicit_domain=None,
+        visibility=0,
+    ):
+        super().__init__(
+            description=description,
+            doc=doc,
+            implicit=implicit,
+            implicit_domain=implicit_domain,
+            visibility=visibility,
+        )
+        self.declare("max_iter", ConfigValue(domain=NonNegativeInt))
+        self.declare("tol", ConfigValue(domain=PositiveFloat))
+        self.declare("init_barrier_parameter", ConfigValue(domain=PositiveFloat))
+        self.declare("minimum_barrier_parameter", ConfigValue(domain=PositiveFloat))
+        self.declare("barrier_decrease", ConfigValue(domain=PositiveFloat))
+        self.declare("report_timing", ConfigValue(domain=bool))
+        self.declare("use_inertia_correction", ConfigValue(domain=bool))
+        self.declare("inertia_correction", InertiaCorrectionOptions())
+        self.declare("linalg", LinalgOptions())
+        self.declare("line_search", LineSearchOptions())
+        self.declare("unified_step", ConfigValue(domain=bool))
+        self.declare("error_scaling", ConfigValue(domain=PositiveFloat))
+        self.declare("bounds_relaxation_factor", ConfigValue(domain=NonNegativeFloat))
 
         self.max_iter = 1000
         self.tol = 1e-8
@@ -189,21 +223,21 @@ def check_convergence(interface, barrier, error_scaling: float, timer=None):
         timer = HierarchicalTimer()
 
     slacks = interface.get_slacks()
-    timer.start('grad obj')
+    timer.start("grad_obj")
     grad_obj = interface.get_obj_factor() * interface.evaluate_grad_objective()
-    timer.stop('grad obj')
-    timer.start('jac eq')
+    timer.stop("grad_obj")
+    timer.start("jac_eq")
     jac_eq = interface.evaluate_jacobian_eq()
-    timer.stop('jac eq')
-    timer.start('jac ineq')
+    timer.stop("jac_eq")
+    timer.start("jac_ineq")
     jac_ineq = interface.evaluate_jacobian_ineq()
-    timer.stop('jac ineq')
-    timer.start('eq cons')
+    timer.stop("jac_ineq")
+    timer.start("eq_cons")
     eq_resid = interface.evaluate_eq_constraints()
-    timer.stop('eq cons')
-    timer.start('ineq cons')
+    timer.stop("eq_cons")
+    timer.start("ineq_cons")
     ineq_resid = interface.evaluate_ineq_constraints() - slacks
-    timer.stop('ineq cons')
+    timer.stop("ineq_cons")
     primals = interface.get_primals()
     duals_eq = interface.get_duals_eq()
     duals_ineq = interface.get_duals_ineq()
@@ -226,18 +260,16 @@ def check_convergence(interface, barrier, error_scaling: float, timer=None):
     ineq_lb_mod[np.isneginf(ineq_lb)] = 0  # these entries get multiplied by 0
     ineq_ub_mod[np.isinf(ineq_ub)] = 0  # these entries get multiplied by 0
 
-    timer.start('grad_lag_primals')
+    timer.start("grad_lag_primals")
     grad_lag_primals = grad_obj + jac_eq.transpose() * duals_eq
     grad_lag_primals += jac_ineq.transpose() * duals_ineq
     grad_lag_primals -= duals_primals_lb
     grad_lag_primals += duals_primals_ub
-    timer.stop('grad_lag_primals')
-    timer.start('grad_lag_slacks')
-    grad_lag_slacks = (-duals_ineq -
-                       duals_slacks_lb +
-                       duals_slacks_ub)
-    timer.stop('grad_lag_slacks')
-    timer.start('bound resids')
+    timer.stop("grad_lag_primals")
+    timer.start("grad_lag_slacks")
+    grad_lag_slacks = -duals_ineq - duals_slacks_lb + duals_slacks_ub
+    timer.stop("grad_lag_slacks")
+    timer.start("bound_resids")
     primals_lb_resid = (primals - primals_lb_mod) * duals_primals_lb - barrier
     primals_ub_resid = (primals_ub_mod - primals) * duals_primals_ub - barrier
     primals_lb_resid[np.isneginf(primals_lb)] = 0
@@ -246,7 +278,7 @@ def check_convergence(interface, barrier, error_scaling: float, timer=None):
     slacks_ub_resid = (ineq_ub_mod - slacks) * duals_slacks_ub - barrier
     slacks_lb_resid[np.isneginf(ineq_lb)] = 0
     slacks_ub_resid[np.isinf(ineq_ub)] = 0
-    timer.stop('bound resids')
+    timer.stop("bound_resids")
 
     if eq_resid.size == 0:
         max_eq_resid = 0
@@ -281,10 +313,14 @@ def check_convergence(interface, barrier, error_scaling: float, timer=None):
         max_slacks_ub_resid = 0
     else:
         max_slacks_ub_resid = np.max(np.abs(slacks_ub_resid))
-    complimentarity_inf = max(max_primals_lb_resid, max_primals_ub_resid,
-                              max_slacks_lb_resid, max_slacks_ub_resid)
+    complimentarity_inf = max(
+        max_primals_lb_resid,
+        max_primals_ub_resid,
+        max_slacks_lb_resid,
+        max_slacks_ub_resid,
+    )
 
-    dual_scaling = ((
+    dual_scaling = (
         np.abs(duals_eq).sum()
         + np.abs(duals_ineq).sum()
         + np.abs(duals_primals_lb).sum()
@@ -298,10 +334,10 @@ def check_convergence(interface, barrier, error_scaling: float, timer=None):
         + np.isfinite(primals_ub).sum()
         + np.isfinite(ineq_lb).sum()
         + np.isfinite(ineq_ub).sum()
-    ))
+    )
     dual_scaling = max(error_scaling, dual_scaling) / error_scaling
 
-    compl_scaling = ((
+    compl_scaling = (
         np.abs(duals_primals_lb).sum()
         + np.abs(duals_primals_ub).sum()
         + np.abs(duals_slacks_lb).sum()
@@ -311,10 +347,10 @@ def check_convergence(interface, barrier, error_scaling: float, timer=None):
         + np.isfinite(primals_ub).sum()
         + np.isfinite(ineq_lb).sum()
         + np.isfinite(ineq_ub).sum()
-    ))
+    )
     compl_scaling = max(error_scaling, compl_scaling) / error_scaling
 
-    return primal_inf, dual_inf/dual_scaling, complimentarity_inf/compl_scaling
+    return primal_inf, dual_inf / dual_scaling, complimentarity_inf / compl_scaling
 
 
 def line_search(
@@ -331,38 +367,62 @@ def line_search(
     delta_duals_slacks_ub,
     timer: Optional[HierarchicalTimer] = None,
 ) -> Optional[float]:
-    raise NotImplementedError('This is just a placeholder for a line search')
+    raise NotImplementedError("This is just a placeholder for a line search")
 
 
-def numeric_factorization(interface: BaseInteriorPointInterface,
-                          kkt,
-                          options: IPOptions,
-                          inertia_coef,
-                          timer: Optional[HierarchicalTimer] = None):
-    logger.debug('{reg_iter:<10}{num_realloc:<10}{reg_coef:<10}{pos_eig:<10}'
-                 '{neg_eig:<10}{zero_eig:<10}{status:<10}'.format(reg_iter='reg_iter', num_realloc='# realloc',
-                                                                  reg_coef='reg_coef', pos_eig='pos_eig',
-                                                                  neg_eig='neg_eig', zero_eig='zero_eig',
-                                                                  status='status'))
-    status, num_realloc = try_factorization_and_reallocation(kkt=kkt,
-                                                             linear_solver=options.linalg.solver,
-                                                             reallocation_factor=options.linalg.reallocation_factor,
-                                                             max_iter=options.linalg.max_num_reallocations,
-                                                             symbolic_or_numeric='numeric',
-                                                             timer=timer)
+def numeric_factorization(
+    interface: BaseInteriorPointInterface,
+    kkt,
+    options: IPOptions,
+    inertia_coef,
+    timer: Optional[HierarchicalTimer] = None,
+):
+    logger.debug(
+        "{reg_iter:<10}{num_realloc:<10}{reg_coef:<10}{pos_eig:<10}"
+        "{neg_eig:<10}{zero_eig:<10}{status:<10}".format(
+            reg_iter="reg_iter",
+            num_realloc="# realloc",
+            reg_coef="reg_coef",
+            pos_eig="pos_eig",
+            neg_eig="neg_eig",
+            zero_eig="zero_eig",
+            status="status",
+        )
+    )
+    status, num_realloc = try_factorization_and_reallocation(
+        kkt=kkt,
+        linear_solver=options.linalg.solver,
+        reallocation_factor=options.linalg.reallocation_factor,
+        max_iter=options.linalg.max_num_reallocations,
+        symbolic_or_numeric="numeric",
+        timer=timer,
+    )
 
     final_inertia_coef = 0
 
     if not options.use_inertia_correction:
-        logger.debug('{reg_iter:<10}{num_realloc:<10}{reg_coef:<10.2e}'
-                     '{pos_eig:<10}{neg_eig:<10}{zero_eig:<10}'
-                     '{status:<10}'.format(reg_iter=0, num_realloc=num_realloc, reg_coef=final_inertia_coef,
-                                           pos_eig=None, neg_eig=None, zero_eig=None, status=str(status)))
+        logger.debug(
+            "{reg_iter:<10}{num_realloc:<10}{reg_coef:<10.2e}"
+            "{pos_eig:<10}{neg_eig:<10}{zero_eig:<10}"
+            "{status:<10}".format(
+                reg_iter=0,
+                num_realloc=num_realloc,
+                reg_coef=final_inertia_coef,
+                pos_eig=None,
+                neg_eig=None,
+                zero_eig=None,
+                status=str(status),
+            )
+        )
         if status != LinearSolverStatus.successful:
-            raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(status))
+            raise RuntimeError(
+                "Could not factorize KKT system; linear solver status: " + str(status)
+            )
     else:
         if status not in {LinearSolverStatus.successful, LinearSolverStatus.singular}:
-            raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(status))
+            raise RuntimeError(
+                "Could not factorize KKT system; linear solver status: " + str(status)
+            )
 
         pos_eig, neg_eig, zero_eig = None, None, None
         _iter = 0
@@ -371,40 +431,216 @@ def numeric_factorization(interface: BaseInteriorPointInterface,
                 pos_eig, neg_eig, zero_eig = options.linalg.solver.get_inertia()
             else:
                 pos_eig, neg_eig, zero_eig = None, None, None
-            logger.debug('{reg_iter:<10}{num_realloc:<10}{reg_coef:<10.2e}'
-                         '{pos_eig:<10}{neg_eig:<10}{zero_eig:<10}'
-                         '{status:<10}'.format(reg_iter=_iter, num_realloc=num_realloc, reg_coef=final_inertia_coef,
-                                               pos_eig=str(pos_eig), neg_eig=str(neg_eig), zero_eig=str(zero_eig),
-                                               status=str(status)))
-            if ((neg_eig == interface.n_eq_constraints() + interface.n_ineq_constraints()) and
-                (zero_eig == 0) and
-                (status == LinearSolverStatus.successful)):
+            logger.debug(
+                "{reg_iter:<10}{num_realloc:<10}{reg_coef:<10.2e}"
+                "{pos_eig:<10}{neg_eig:<10}{zero_eig:<10}"
+                "{status:<10}".format(
+                    reg_iter=_iter,
+                    num_realloc=num_realloc,
+                    reg_coef=final_inertia_coef,
+                    pos_eig=str(pos_eig),
+                    neg_eig=str(neg_eig),
+                    zero_eig=str(zero_eig),
+                    status=str(status),
+                )
+            )
+            if (
+                (
+                    neg_eig
+                    == interface.n_eq_constraints() + interface.n_ineq_constraints()
+                )
+                and (zero_eig == 0)
+                and (status == LinearSolverStatus.successful)
+            ):
                 break
             if _iter == 0:
                 kkt = kkt.copy()
-            kkt = interface.regularize_equality_gradient(kkt=kkt, coef=-inertia_coef, copy_kkt=False)
-            kkt = interface.regularize_hessian(kkt=kkt, coef=inertia_coef, copy_kkt=False)
-            status, num_realloc = try_factorization_and_reallocation(kkt=kkt,
-                                                                     linear_solver=options.linalg.solver,
-                                                                     reallocation_factor=options.linalg.reallocation_factor,
-                                                                     max_iter=options.linalg.max_num_reallocations,
-                                                                     symbolic_or_numeric='numeric',
-                                                                     timer=timer)
+            kkt = interface.regularize_equality_gradient(
+                kkt=kkt, coef=-inertia_coef, copy_kkt=False
+            )
+            kkt = interface.regularize_hessian(
+                kkt=kkt, coef=inertia_coef, copy_kkt=False
+            )
+            status, num_realloc = try_factorization_and_reallocation(
+                kkt=kkt,
+                linear_solver=options.linalg.solver,
+                reallocation_factor=options.linalg.reallocation_factor,
+                max_iter=options.linalg.max_num_reallocations,
+                symbolic_or_numeric="numeric",
+                timer=timer,
+            )
             final_inertia_coef = inertia_coef
             inertia_coef *= options.inertia_correction.factor_increase
             _iter += 1
 
-        if ((neg_eig != interface.n_eq_constraints() + interface.n_ineq_constraints()) or
-            (zero_eig != 0) or
-            (status != LinearSolverStatus.successful)):
-            raise RuntimeError('Exceeded maximum inertia correciton')
+        if (
+            (neg_eig != interface.n_eq_constraints() + interface.n_ineq_constraints())
+            or (zero_eig != 0)
+            or (status != LinearSolverStatus.successful)
+        ):
+            raise RuntimeError("Exceeded maximum inertia correciton")
 
     return final_inertia_coef
 
 
-def ip_solve(interface: BaseInteriorPointInterface,
-             options: Optional[IPOptions] = None,
-             timer: Optional[HierarchicalTimer] = None) -> InteriorPointStatus:
+def numeric_factorization_and_back_solve(
+    interface: BaseInteriorPointInterface,
+    kkt,
+    options: IPOptions,
+    inertia_coef,
+    rhs,
+    timer: Optional[HierarchicalTimer] = None,
+):
+    if timer is None:
+        timer = HierarchicalTimer()
+    logger.debug(
+        "{reg_iter:<10}{num_realloc:<10}{reg_coef:<10}{pos_eig:<10}"
+        "{neg_eig:<10}{zero_eig:<10}{status:<10}".format(
+            reg_iter="reg_iter",
+            num_realloc="# realloc",
+            reg_coef="reg_coef",
+            pos_eig="pos_eig",
+            neg_eig="neg_eig",
+            zero_eig="zero_eig",
+            status="status",
+        )
+    )
+    timer.start("factorize")
+    timer.start("numeric")
+    status, num_realloc = try_factorization_and_reallocation(
+        kkt=kkt,
+        linear_solver=options.linalg.solver,
+        reallocation_factor=options.linalg.reallocation_factor,
+        max_iter=options.linalg.max_num_reallocations,
+        symbolic_or_numeric="numeric",
+        timer=timer,
+    )
+    timer.stop("numeric")
+    timer.stop("factorize")
+
+    final_inertia_coef = 0
+    if not options.use_inertia_correction:
+        logger.debug(
+            "{reg_iter:<10}{num_realloc:<10}{reg_coef:<10.2e}"
+            "{pos_eig:<10}{neg_eig:<10}{zero_eig:<10}"
+            "{status:<10}".format(
+                reg_iter=0,
+                num_realloc=num_realloc,
+                reg_coef=final_inertia_coef,
+                pos_eig="None",
+                neg_eig="None",
+                zero_eig="None",
+                status=str(status),
+            )
+        )
+        if status != LinearSolverStatus.successful:
+            raise RuntimeError(
+                "Could not factorize KKT system; linear solver status: " + str(status)
+            )
+        # do backsolve
+        timer.start("back_solve")
+        assert isinstance(
+            options.linalg.solver, MPIBaseImplicitSchurComplementLinearSolver
+        ), "Expected MPIBaseImplicitSchurComplementLinearSolver"
+        solver: MPIBaseImplicitSchurComplementLinearSolver = options.linalg.solver
+        delta, pcg_status = solver.do_back_solve(rhs, timer=timer)
+        num_pcg_iter = solver.current_pcg_solution.num_iterations
+        timer.stop("back_solve")
+    else:
+        if status not in {LinearSolverStatus.successful, LinearSolverStatus.singular}:
+            raise RuntimeError(
+                "Could not factorize KKT system; linear solver status: " + str(status)
+            )
+
+        pos_eig, neg_eig, zero_eig = None, None, None
+        _iter = 0
+        while final_inertia_coef <= options.inertia_correction.max_coef:
+            if status == LinearSolverStatus.successful:
+                # TODO: Adjust timing across ranks, i.e. add explicit barriers between subroutines
+                # curretnly, some ranks 'wait' in inertia check while other are still in factorization/backsolve
+                # could define decorator that adds barrier before and after function call, and defines timer
+                # sub-catrgory to see how much time is spent in barrier for different ranks
+                timer.start("inertia_check")
+                pos_eig, neg_eig, zero_eig = options.linalg.solver.get_inertia()
+                timer.stop("inertia_check")
+            else:
+                pos_eig, neg_eig, zero_eig = None, None, None
+            logger.debug(
+                "{reg_iter:<10}{num_realloc:<10}{reg_coef:<10.2e}"
+                "{pos_eig:<10}{neg_eig:<10}{zero_eig:<10}"
+                "{status:<10}".format(
+                    reg_iter=_iter,
+                    num_realloc=num_realloc,
+                    reg_coef=final_inertia_coef,
+                    pos_eig=str(pos_eig),
+                    neg_eig=str(neg_eig),
+                    zero_eig=str(zero_eig),
+                    status=str(status),
+                )
+            )
+            if (
+                (
+                    neg_eig
+                    == interface.n_eq_constraints() + interface.n_ineq_constraints()
+                )
+                and (zero_eig == 0)
+                and (status == LinearSolverStatus.successful)
+            ):
+                # do back solve here to check if inertia related error occurs
+                assert isinstance(
+                    options.linalg.solver, MPIBaseImplicitSchurComplementLinearSolver
+                ), "Expected MPIBaseImplicitSchurComplementLinearSolver"
+                solver: MPIBaseImplicitSchurComplementLinearSolver = (
+                    options.linalg.solver
+                )
+                timer.start("back_solve")
+                delta, pcg_status = solver.do_back_solve(rhs, timer=timer)
+                num_pcg_iter = solver.current_pcg_solution.num_iterations
+                timer.stop("back_solve")
+                if pcg_status == PcgSolutionStatus.negative_curvature:
+                    pass
+                else:
+                    break
+
+            if _iter == 0:
+                kkt = kkt.copy()
+            kkt = interface.regularize_equality_gradient(
+                kkt=kkt, coef=-inertia_coef, copy_kkt=False
+            )
+            kkt = interface.regularize_hessian(
+                kkt=kkt, coef=inertia_coef, copy_kkt=False
+            )
+            timer.start("factorize")
+            timer.start("numeric")
+            status, num_realloc = try_factorization_and_reallocation(
+                kkt=kkt,
+                linear_solver=options.linalg.solver,
+                reallocation_factor=options.linalg.reallocation_factor,
+                max_iter=options.linalg.max_num_reallocations,
+                symbolic_or_numeric="numeric",
+                timer=timer,
+            )
+            timer.stop("numeric")
+            timer.stop("factorize")
+            final_inertia_coef = inertia_coef
+            inertia_coef *= options.inertia_correction.factor_increase
+            _iter += 1
+
+        if (
+            (neg_eig != interface.n_eq_constraints() + interface.n_ineq_constraints())
+            or (zero_eig != 0)
+            or (status != LinearSolverStatus.successful)
+        ):
+            raise RuntimeError("Exceeded maximum inertia correction")
+
+    return delta, final_inertia_coef, num_pcg_iter
+
+
+def ip_solve(
+    interface: BaseInteriorPointInterface,
+    options: Optional[IPOptions] = None,
+    timer: Optional[HierarchicalTimer] = None,
+) -> InteriorPointStatus:
     """
     Parameters
     ----------
@@ -420,8 +656,8 @@ def ip_solve(interface: BaseInteriorPointInterface,
     if timer is None:
         timer = HierarchicalTimer()
 
-    timer.start('IP solve')
-    timer.start('init')
+    timer.start("ip_solve")
+    timer.start("init")
 
     interface.set_bounds_relaxation_factor(options.bounds_relaxation_factor)
 
@@ -452,29 +688,33 @@ def ip_solve(interface: BaseInteriorPointInterface,
     alpha_dual_max = 1
     alpha = 1
 
-    logger.info('{_iter:<6}'
-                '{objective:<11}'
-                '{primal_inf:<11}'
-                '{dual_inf:<11}'
-                '{compl_inf:<11}'
-                '{barrier:<11}'
-                '{alpha_p:<11}'
-                '{alpha_d:<11}'
-                '{alpha:<11}'
-                '{reg:<11}'
-                '{time:<7}'.format(_iter='Iter',
-                                   objective='Objective',
-                                   primal_inf='Prim Inf',
-                                   dual_inf='Dual Inf',
-                                   compl_inf='Comp Inf',
-                                   barrier='Barrier',
-                                   alpha_p='Prim Step',
-                                   alpha_d='Dual Step',
-                                   alpha='LS Step',
-                                   reg='Reg',
-                                   time='Time'))
+    logger.info(
+        "{_iter:<6}"
+        "{objective:<11}"
+        "{primal_inf:<11}"
+        "{dual_inf:<11}"
+        "{compl_inf:<11}"
+        "{barrier:<11}"
+        "{alpha_p:<11}"
+        "{alpha_d:<11}"
+        "{alpha:<11}"
+        "{reg:<11}"
+        "{time:<7}".format(
+            _iter="Iter",
+            objective="Objective",
+            primal_inf="Prim Inf",
+            dual_inf="Dual Inf",
+            compl_inf="Comp Inf",
+            barrier="Barrier",
+            alpha_p="Prim Step",
+            alpha_d="Dual Step",
+            alpha="LS Step",
+            reg="Reg",
+            time="Time",
+        )
+    )
 
-    timer.stop('init')
+    timer.stop("init")
     status = InteriorPointStatus.error
 
     for _iter in range(options.max_iter):
@@ -487,93 +727,125 @@ def ip_solve(interface: BaseInteriorPointInterface,
         interface.set_duals_slacks_lb(duals_slacks_lb)
         interface.set_duals_slacks_ub(duals_slacks_ub)
 
-        timer.start('convergence check')
-        primal_inf, dual_inf, complimentarity_inf = check_convergence(interface=interface, barrier=0, error_scaling=options.error_scaling, timer=timer)
-        timer.stop('convergence check')
+        timer.start("convergence_check")
+        primal_inf, dual_inf, complimentarity_inf = check_convergence(
+            interface=interface,
+            barrier=0,
+            error_scaling=options.error_scaling,
+            timer=timer,
+        )
+        timer.stop("convergence_check")
         objective = interface.evaluate_objective()
-        logger.info('{_iter:<6}'
-                    '{objective:<11.2e}'
-                    '{primal_inf:<11.2e}'
-                    '{dual_inf:<11.2e}'
-                    '{compl_inf:<11.2e}'
-                    '{barrier:<11.2e}'
-                    '{alpha_p:<11.2e}'
-                    '{alpha_d:<11.2e}'
-                    '{alpha:<11.2e}'
-                    '{reg:<11.2e}'
-                    '{time:<7.3f}'.format(_iter=_iter,
-                                          objective=objective,
-                                          primal_inf=primal_inf,
-                                          dual_inf=dual_inf,
-                                          compl_inf=complimentarity_inf,
-                                          barrier=barrier_parameter,
-                                          alpha_p=alpha_primal_max,
-                                          alpha_d=alpha_dual_max,
-                                          alpha=alpha,
-                                          reg=used_inertia_coef,
-                                          time=time.time() - t0))
+        logger.info(
+            "{_iter:<6}"
+            "{objective:<11.2e}"
+            "{primal_inf:<11.2e}"
+            "{dual_inf:<11.2e}"
+            "{compl_inf:<11.2e}"
+            "{barrier:<11.2e}"
+            "{alpha_p:<11.2e}"
+            "{alpha_d:<11.2e}"
+            "{alpha:<11.2e}"
+            "{reg:<11.2e}"
+            "{time:<7.3f}".format(
+                _iter=_iter,
+                objective=objective,
+                primal_inf=primal_inf,
+                dual_inf=dual_inf,
+                compl_inf=complimentarity_inf,
+                barrier=barrier_parameter,
+                alpha_p=alpha_primal_max,
+                alpha_d=alpha_dual_max,
+                alpha=alpha,
+                reg=used_inertia_coef,
+                time=time.time() - t0,
+            )
+        )
 
         if max(primal_inf, dual_inf, complimentarity_inf) <= options.tol:
             status = InteriorPointStatus.optimal
             break
-        timer.start('convergence check')
-        primal_inf, dual_inf, complimentarity_inf = check_convergence(interface=interface,
-                                                                      barrier=barrier_parameter,
-                                                                      error_scaling=options.error_scaling,
-                                                                      timer=timer)
-        timer.stop('convergence check')
-        if max(primal_inf, dual_inf, complimentarity_inf) \
-                <= options.barrier_decrease * barrier_parameter:
-            barrier_parameter = max(options.minimum_barrier_parameter,
-                                    min(0.5 * barrier_parameter, barrier_parameter ** 1.5))
+        timer.start("convergence_check")
+        primal_inf, dual_inf, complimentarity_inf = check_convergence(
+            interface=interface,
+            barrier=barrier_parameter,
+            error_scaling=options.error_scaling,
+            timer=timer,
+        )
+        timer.stop("convergence_check")
+        if (
+            max(primal_inf, dual_inf, complimentarity_inf)
+            <= options.barrier_decrease * barrier_parameter
+        ):
+            barrier_parameter = max(
+                options.minimum_barrier_parameter,
+                min(0.5 * barrier_parameter, barrier_parameter**1.5),
+            )
 
         interface.set_barrier_parameter(barrier_parameter)
-        timer.start('eval')
-        timer.start('eval kkt')
+        timer.start("eval")
+        timer.start("eval_kkt")
         kkt = interface.evaluate_primal_dual_kkt_matrix(timer=timer)
-        timer.stop('eval kkt')
-        timer.start('eval rhs')
+        timer.stop("eval_kkt")
+        timer.start("eval_rhs")
         rhs = interface.evaluate_primal_dual_kkt_rhs(timer=timer)
-        timer.stop('eval rhs')
-        timer.stop('eval')
+        timer.stop("eval_rhs")
+        timer.stop("eval")
 
         # Factorize linear system
-        timer.start('factorize')
         if _iter == 0:
-            timer.start('symbolic')
-            sym_fact_status, sym_fact_iter = try_factorization_and_reallocation(kkt=kkt,
-                                                                                linear_solver=options.linalg.solver,
-                                                                                reallocation_factor=options.linalg.reallocation_factor,
-                                                                                max_iter=options.linalg.max_num_reallocations,
-                                                                                symbolic_or_numeric='symbolic',
-                                                                                timer=timer)
-            timer.stop('symbolic')
+            timer.start("factorize")
+            timer.start("symbolic")
+            sym_fact_status, sym_fact_iter = try_factorization_and_reallocation(
+                kkt=kkt,
+                linear_solver=options.linalg.solver,
+                reallocation_factor=options.linalg.reallocation_factor,
+                max_iter=options.linalg.max_num_reallocations,
+                symbolic_or_numeric="symbolic",
+                timer=timer,
+            )
+            timer.stop("symbolic")
+            timer.stop("factorize")
             if sym_fact_status != LinearSolverStatus.successful:
-                raise RuntimeError('Could not factorize KKT system; linear solver status: ' + str(sym_fact_status))
-        timer.start('numeric')
-        used_inertia_coef = numeric_factorization(interface=interface,
-                                                  kkt=kkt,
-                                                  options=options,
-                                                  inertia_coef=inertia_coef,
-                                                  timer=timer)
-        inertia_coef = used_inertia_coef * options.inertia_correction.factor_decrease
-        if inertia_coef < options.inertia_correction.init_coef:
-            inertia_coef = options.inertia_correction.init_coef
-        timer.stop('numeric')
-        timer.stop('factorize')
+                raise RuntimeError(
+                    "Could not factorize KKT system; linear solver status: "
+                    + str(sym_fact_status)
+                )
+        if isinstance(options.linalg.solver, MPIBaseImplicitSchurComplementLinearSolver):
+            delta, used_inertia_coef, num_pcg_iter = numeric_factorization_and_back_solve(interface=interface,
+                                                                            kkt=kkt,
+                                                                            options=options,
+                                                                            inertia_coef=inertia_coef,
+                                                                            rhs=rhs,
+                                                                            timer=timer)
+        else:
+            timer.start('factorize')
+            timer.start('numeric')
+            used_inertia_coef = numeric_factorization(interface=interface,
+                                                    kkt=kkt,
+                                                    options=options,
+                                                    inertia_coef=inertia_coef,
+                                                    timer=timer)
+            inertia_coef = used_inertia_coef * options.inertia_correction.factor_decrease
+            if inertia_coef < options.inertia_correction.init_coef:
+                inertia_coef = options.inertia_correction.init_coef
+            timer.stop('numeric')
+            timer.stop('factorize')
 
-        timer.start('back solve')
-        delta = options.linalg.solver.do_back_solve(rhs)
-        timer.stop('back solve')
+            timer.start('back_solve')
+            delta = options.linalg.solver.do_back_solve(rhs)
+            timer.stop('back_solve')
 
         interface.set_primal_dual_kkt_solution(delta)
-        timer.start('frac boundary')
-        alpha_primal_max, alpha_dual_max = fraction_to_the_boundary(interface=interface, tau=1 - barrier_parameter)
+        timer.start("frac_boundary")
+        alpha_primal_max, alpha_dual_max = fraction_to_the_boundary(
+            interface=interface, tau=1 - barrier_parameter
+        )
         if options.unified_step:
             tmp = min(alpha_primal_max, alpha_dual_max)
             alpha_primal_max = tmp
             alpha_dual_max = tmp
-        timer.stop('frac boundary')
+        timer.stop("frac_boundary")
 
         delta_primals = interface.get_delta_primals()
         delta_slacks = interface.get_delta_slacks()
@@ -612,7 +884,7 @@ def ip_solve(interface: BaseInteriorPointInterface,
             )
 
             if alpha is None:
-                logger.warning('line search failed')
+                logger.warning("line search failed")
                 status = InteriorPointStatus.error
                 break
 
@@ -625,22 +897,28 @@ def ip_solve(interface: BaseInteriorPointInterface,
         duals_slacks_lb += alpha * delta_duals_slacks_lb
         duals_slacks_ub += alpha * delta_duals_slacks_ub
 
-    timer.stop('IP solve')
+    timer.stop("ip_solve")
     if options.report_timing:
         print(timer)
     return status
 
 
-def try_factorization_and_reallocation(kkt, linear_solver: LinearSolverInterface, reallocation_factor, max_iter,
-                                       symbolic_or_numeric, timer=None):
+def try_factorization_and_reallocation(
+    kkt,
+    linear_solver: LinearSolverInterface,
+    reallocation_factor,
+    max_iter,
+    symbolic_or_numeric,
+    timer=None,
+):
     if timer is None:
         timer = HierarchicalTimer()
 
     assert max_iter >= 1
-    if symbolic_or_numeric == 'numeric':
+    if symbolic_or_numeric == "numeric":
         method = linear_solver.do_numeric_factorization
     else:
-        assert symbolic_or_numeric == 'symbolic'
+        assert symbolic_or_numeric == "symbolic"
         method = linear_solver.do_symbolic_factorization
     for count in range(max_iter):
         res = method(matrix=kkt, raise_on_error=False, timer=timer)
@@ -706,54 +984,40 @@ def fraction_to_the_boundary(interface, tau):
     ineq_ub = interface.ineq_ub()
 
     alpha_primal_max_a = _fraction_to_the_boundary_helper_lb(
-        tau=tau,
-        x=primals,
-        delta_x=delta_primals,
-        xl=primals_lb)
+        tau=tau, x=primals, delta_x=delta_primals, xl=primals_lb
+    )
     alpha_primal_max_b = _fraction_to_the_boundary_helper_ub(
-        tau=tau,
-        x=primals,
-        delta_x=delta_primals,
-        xu=primals_ub)
+        tau=tau, x=primals, delta_x=delta_primals, xu=primals_ub
+    )
     alpha_primal_max_c = _fraction_to_the_boundary_helper_lb(
-        tau=tau,
-        x=slacks,
-        delta_x=delta_slacks,
-        xl=ineq_lb)
+        tau=tau, x=slacks, delta_x=delta_slacks, xl=ineq_lb
+    )
     alpha_primal_max_d = _fraction_to_the_boundary_helper_ub(
-        tau=tau,
-        x=slacks,
-        delta_x=delta_slacks,
-        xu=ineq_ub)
-    alpha_primal_max = min(alpha_primal_max_a, alpha_primal_max_b,
-                           alpha_primal_max_c, alpha_primal_max_d)
+        tau=tau, x=slacks, delta_x=delta_slacks, xu=ineq_ub
+    )
+    alpha_primal_max = min(
+        alpha_primal_max_a, alpha_primal_max_b, alpha_primal_max_c, alpha_primal_max_d
+    )
 
     _xl = duals_primals_lb.copy()
     _xl.fill(0)
     alpha_dual_max_a = _fraction_to_the_boundary_helper_lb(
-        tau=tau,
-        x=duals_primals_lb,
-        delta_x=delta_duals_primals_lb,
-        xl=_xl)
+        tau=tau, x=duals_primals_lb, delta_x=delta_duals_primals_lb, xl=_xl
+    )
     alpha_dual_max_b = _fraction_to_the_boundary_helper_lb(
-        tau=tau,
-        x=duals_primals_ub,
-        delta_x=delta_duals_primals_ub,
-        xl=_xl)
+        tau=tau, x=duals_primals_ub, delta_x=delta_duals_primals_ub, xl=_xl
+    )
     _xl = duals_slacks_lb.copy()
     _xl.fill(0)
     alpha_dual_max_c = _fraction_to_the_boundary_helper_lb(
-        tau=tau,
-        x=duals_slacks_lb,
-        delta_x=delta_duals_slacks_lb,
-        xl=_xl)
+        tau=tau, x=duals_slacks_lb, delta_x=delta_duals_slacks_lb, xl=_xl
+    )
     alpha_dual_max_d = _fraction_to_the_boundary_helper_lb(
-        tau=tau,
-        x=duals_slacks_ub,
-        delta_x=delta_duals_slacks_ub,
-        xl=_xl)
-    alpha_dual_max = min(alpha_dual_max_a, alpha_dual_max_b,
-                         alpha_dual_max_c, alpha_dual_max_d)
+        tau=tau, x=duals_slacks_ub, delta_x=delta_duals_slacks_ub, xl=_xl
+    )
+    alpha_dual_max = min(
+        alpha_dual_max_a, alpha_dual_max_b, alpha_dual_max_c, alpha_dual_max_d
+    )
 
     return alpha_primal_max, alpha_dual_max
 
@@ -761,10 +1025,12 @@ def fraction_to_the_boundary(interface, tau):
 def process_init(x, lb, ub):
     if np.any((ub - lb) < 0):
         raise ValueError(
-            'Lower bounds for variables/inequalities should not be larger than upper bounds.')
+            "Lower bounds for variables/inequalities should not be larger than upper bounds."
+        )
     if np.any((ub - lb) == 0):
         raise ValueError(
-            'Variables and inequalities should not have equal lower and upper bounds.')
+            "Variables and inequalities should not have equal lower and upper bounds."
+        )
 
     lb_mask = build_bounds_mask(lb)
     ub_mask = build_bounds_mask(ub)
@@ -772,7 +1038,7 @@ def process_init(x, lb, ub):
     lb_only = np.logical_and(lb_mask, np.logical_not(ub_mask))
     ub_only = np.logical_and(ub_mask, np.logical_not(lb_mask))
     lb_and_ub = np.logical_and(lb_mask, ub_mask)
-    out_of_bounds = ((x >= ub) + (x <= lb))
+    out_of_bounds = (x >= ub) + (x <= lb)
     out_of_bounds_lb_only = np.logical_and(out_of_bounds, lb_only)
     out_of_bounds_ub_only = np.logical_and(out_of_bounds, ub_only)
     out_of_bounds_lb_and_ub = np.logical_and(out_of_bounds, lb_and_ub)

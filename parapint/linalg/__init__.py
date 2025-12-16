@@ -6,3 +6,8 @@ from .mumps_interface import MumpsInterface
 from .mkl_pardiso_interface import InteriorPointMKLPardisoInterface, InteriorPointMKLPardisoSchurInterface
 from .schur_complement.explicit_schur_complement import SchurComplementLinearSolver
 from .schur_complement.mpi_explicit_schur_complement import MPISchurComplementLinearSolver
+from .schur_complement.mpi_implicit_schur_complement import (
+    ImplicitSchurComplementPreconditionerType,
+    make_implicit_schur_complement_solver,
+    ilupp_is_available
+)
