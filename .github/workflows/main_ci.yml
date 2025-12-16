@@ -28,13 +28,12 @@ jobs:
         conda env list
         python -m pip install --upgrade pip
         pip install setuptools pyomo numpy scipy coverage matplotlib pybind11 pytest
-        CONDA_PACKAGES="openmpi ipopt"
+        CONDA_PACKAGES="openmpi ipopt mkl"
         if [[ "${{ matrix.python-version }}" < "3.13" ]]; then
           CONDA_PACKAGES="$CONDA_PACKAGES pymumps"
         fi
         echo "installing $CONDA_PACKAGES"
         conda install $CONDA_PACKAGES --no-update-deps
-        conda install -c intel mkl --no-update-deps
         pip install mpi4py
         pyomo download-extensions
         pyomo build-extensions
