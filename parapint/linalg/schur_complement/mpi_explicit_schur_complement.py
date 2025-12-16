@@ -124,6 +124,54 @@ def _get_all_nonzero_elements_in_sc(border_matrices: Dict[int, _BorderMatrix]):
 
     return nonzero_rows, nonzero_cols
 
+def _get_all_nonzero_elements_in_sc_using_ix(border_matrices: Dict[int, _BorderMatrix],
+                                             local_block_indices: List[int],
+                                             num_blocks: int):
+
+    num_nnz_per_local_blocks = np.array([border_matrices[ndx].num_nonzero_rows for ndx in local_block_indices], dtype=np.int64)
+    if rank == 0:
+        all_num_nnz_per_block = np.zeros(num_blocks, dtype=np.int64)
+    else:
+        all_num_nnz_per_block = None
+
+    # Collect num. of nonzeros per block in correct order
+    sendcounts = np.array(comm.gather(len(num_nnz_per_local_blocks), 0))
+    comm.Gatherv(sendbuf=num_nnz_per_local_blocks,
+                 recvbuf=(all_num_nnz_per_block, sendcounts),
+                 root=0)
+
+    local_nnzs = np.concatenate([border_matrices[ndx].nonzero_rows for ndx in local_block_indices])
+    sendcounts = np.array(comm.gather(len(local_nnzs), 0))
+    if rank == 0:
+        nnz_indices_vector = np.zeros(sum(sendcounts), dtype=np.int64)
+    else:
+        nnz_indices_vector = None
+
+    # Collect nonzero indices for each block in 1-D array, ordered as above
+    comm.Gatherv(sendbuf=local_nnzs, 
+                 recvbuf=(nnz_indices_vector, sendcounts),
+                 root=0)
+
+    if rank == 0:
+        # Retrieve indices for each block from 1-D array
+        local_indices_vectors = np.split(nnz_indices_vector, np.cumsum(all_num_nnz_per_block))
+        sc_dim = border_matrices[local_block_indices[0]].csr.shape[0]
+        sc = np.zeros((sc_dim, sc_dim), dtype=np.bool_)
+        # Define incidence of SC by sum of cross product for all local block indices
+        for local_indices in local_indices_vectors:
+            sc[np.ix_(local_indices, local_indices)] = True
+        sc = coo_matrix(sc)
+        nonzero_rows = sc.row
+        nonzero_cols = sc.col
+    else:
+        nonzero_rows = np.zeros(0, dtype=np.int64)
+        nonzero_cols = np.zeros(0, dtype=np.int64)
+
+    nonzero_rows = comm.bcast(nonzero_rows, root=0)
+    nonzero_cols = comm.bcast(nonzero_cols, root=0)
+
+    return nonzero_rows, nonzero_cols
+
 
 class MPISchurComplementLinearSolver(LinearSolverInterface):
     """
@@ -237,7 +285,7 @@ class MPISchurComplementLinearSolver(LinearSolverInterface):
             self.border_matrices[ndx] = _BorderMatrix(block_matrix.get_block(self.block_dim - 1, ndx))
         timer.stop('build_border_matrices')
         timer.start('gather_all_nonzero_elements')
-        nonzero_rows, nonzero_cols = _get_all_nonzero_elements_in_sc(self.border_matrices)
+        nonzero_rows, nonzero_cols = _get_all_nonzero_elements_in_sc_using_ix(self.border_matrices, self.local_block_indices, self.block_dim - 1)
         timer.stop('gather_all_nonzero_elements')
         timer.start('construct_schur_complement')
         sc_nnz = nonzero_rows.size
