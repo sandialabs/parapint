@@ -168,14 +168,14 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
     @pytest.mark.fast
     def test_scipy(self):
         solver = parapint.linalg.ScipyInterface()
-        self._test_solvers(solver, use_tril=True)
+        self._test_solvers(solver, use_tril=False)
 
     @pytest.mark.serial
     @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'mumps is needed for interior point mumps tests')
     def test_mumps(self):
         solver = parapint.linalg.MumpsInterface()
-        self._test_solvers(solver, use_tril=True)
+        self._test_solvers(solver, use_tril=False)
 
     @pytest.mark.serial
     @pytest.mark.fast
@@ -189,7 +189,7 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
     @unittest.skipIf(not mkl_pardiso_available, 'MKL Pardiso is needed for interior point MKL Pardiso tests')
     def test_mkl_pardiso(self):
         solver = parapint.linalg.InteriorPointMKLPardisoInterface()
-        self._test_solvers(solver, use_tril=True)
+        self._test_solvers(solver, use_tril=False)
 
 
 class TestSchurComplementSolver(unittest.TestCase):
