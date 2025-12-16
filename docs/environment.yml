@@ -2,7 +2,7 @@ name: parapint
 channels:
     - conda-forge
 dependencies:
-    - python=3.7
+    - python=3.11
     - numpy
     - scipy
     - pyutilib
@@ -10,4 +10,7 @@ dependencies:
     - openmpi
     - mpi4py
     - pymumps
+    - numpydoc
+    - sphinx
+    - sphinx-rtd-theme
     - numpydoc
