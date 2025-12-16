@@ -259,7 +259,17 @@ def pcg_solve(
     )
 
     # Only necessary to maintain similar interface to scipy.sparse.linalg.cg
-    A, M, x, b, postprocess = make_system(A, M, x0, b)
+    # newer scipy versions do not return postprocess function
+    A, M, x, *dummy = make_system(A, M, x0, b)
+    if len(dummy) == 1:
+        b = dummy[0]
+        postprocess = lambda _x: _x
+    elif len(dummy) == 2:
+        b = dummy[0]
+        postprocess = dummy[1]
+    else:
+        raise RuntimeError("make_system returned unexpected number of values")
+
     bnrm2 = np.linalg.norm(b)
 
     atol = max(float(atol), float(rtol) * float(bnrm2))
