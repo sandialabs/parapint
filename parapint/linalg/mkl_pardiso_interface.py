@@ -22,7 +22,7 @@ class InteriorPointMKLPardisoInterface(LinearSolverInterface):
     @classmethod
     def getLoggerName(cls):
         return 'mkl_pardiso'
-    
+
     def _convert_matrix(self, matrix: Union[spmatrix, BlockMatrix]
                         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         if isinstance(matrix, BlockMatrix):
@@ -66,8 +66,6 @@ class InteriorPointMKLPardisoInterface(LinearSolverInterface):
             else:
                 res.status = LinearSolverStatus.error
         return res
-    
-
 
     def do_numeric_factorization(
         self, matrix: Union[spmatrix, BlockMatrix], raise_on_error: bool = True
@@ -101,9 +99,7 @@ class InteriorPointMKLPardisoInterface(LinearSolverInterface):
         self._num_status = res.status
 
         return res
-    
 
-    
     def increase_memory_allocation(self, factor):
         raise NotImplementedError("increase_memory_allocation not implemented for MKL Pardiso")
 
@@ -114,7 +110,7 @@ class InteriorPointMKLPardisoInterface(LinearSolverInterface):
             raise RuntimeError('Must call do_numeric_factorization before do_back_solve can be called')
         if self._num_status != LinearSolverStatus.successful:
             raise RuntimeError('Can only call do_back_solve if the numeric factorization was successful.')
-        
+
         if isinstance(rhs, BlockVector):
             _rhs = rhs.flatten()
             result = _rhs
@@ -144,14 +140,13 @@ class InteriorPointMKLPardisoInterface(LinearSolverInterface):
         num_negative_eigenvalues = self.get_iparm(23)
         num_positive_eigenvalues = self.get_iparm(22)
         return (num_positive_eigenvalues, num_negative_eigenvalues, 0)
-    
 
 
 class InteriorPointMKLPardisoSchurInterface(InteriorPointMKLPardisoInterface):
 
     def get_schur_complement(self):
         return self._pardiso.get_schur_complement()
-    
+
     def do_symbolic_factorization(
         self, matrix: Union[spmatrix, BlockMatrix], dim_schur: int, raise_on_error: bool = True
     ) -> LinearSolverResults:
@@ -164,7 +159,7 @@ class InteriorPointMKLPardisoSchurInterface(InteriorPointMKLPardisoInterface):
         _a, _ia, _ja = self._convert_matrix(matrix)
 
         stat = self._pardiso.do_symbolic_factorization_schur(a=_a, ia=_ia, ja=_ja, dim_schur=dim_schur)
-        
+
         res = LinearSolverResults()
         if stat == 0:
             res.status = LinearSolverStatus.successful
@@ -182,7 +177,7 @@ class InteriorPointMKLPardisoSchurInterface(InteriorPointMKLPardisoInterface):
                 res.status = LinearSolverStatus.error
 
         return res
-    
+
     def do_numeric_factorization(
         self, matrix: Union[spmatrix, BlockMatrix], raise_on_error: bool = True
     ) -> LinearSolverResults:
@@ -223,7 +218,7 @@ class InteriorPointMKLPardisoSchurInterface(InteriorPointMKLPardisoInterface):
             raise RuntimeError('Must call do_numeric_factorization before do_back_solve can be called')
         if self._num_status != LinearSolverStatus.successful:
             raise RuntimeError('Can only call do_back_solve if the numeric factorization was successful.')
-        
+
         if isinstance(rhs, BlockVector):
             _rhs = rhs.flatten()
             result = _rhs
