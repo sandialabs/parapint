@@ -54,18 +54,21 @@ class TestSchurComplement(unittest.TestCase):
         elif type == "implicit-local-bj":
             full_sc = np.zeros_like(sc)
             for ndx in range(len(solver.subproblem_solvers)):
-                nk = solver.border_matrices[ndx].selection_matrix
-                local_sc_contrib = nk @ solver.local_schur_complements[ndx] @ nk.T
-                full_sc += local_sc_contrib
+                if ndx in solver.local_block_indices:
+                    nk = solver.border_matrices[ndx].selection_matrix
+                    local_sc_contrib = nk @ solver.local_schur_complements[ndx] @ nk.T
+                    full_sc += local_sc_contrib
+            # reduce local contributions across all ranks
+            comm.Allreduce(MPI.IN_PLACE, full_sc, op=MPI.SUM)
             full_sc += A.get_block(3, 3).toarray()
             assert np.allclose(full_sc, sc)
         elif type == "implicit-local-asd":
             full_sc = np.zeros_like(sc)
             true_sc_diag = np.diagonal(sc - A.get_block(3, 3).toarray())
             for ndx in range(len(solver.subproblem_solvers)):
-                nk = solver.border_matrices[ndx].selection_matrix
-                local_sc = solver.local_schur_complements[ndx]
-                assert np.allclose(np.diagonal(local_sc), true_sc_diag)
+                if ndx in solver.local_block_indices:
+                    local_sc = solver.local_schur_complements[ndx]
+                    assert np.allclose(np.diagonal(local_sc), true_sc_diag)
 
     def _test_linear_solver(self, solver):
         A, rhs, sc = get_stoch_test_system(compute_sc=True)
@@ -91,8 +94,9 @@ class TestSchurComplement(unittest.TestCase):
         self.assertEqual(inertia1, inertia2)
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_explicit_schur_complement(self):
         subproblem_solvers = {
             ndx: ScipyInterface(compute_inertia=True) for ndx in range(3)
@@ -107,8 +111,9 @@ class TestSchurComplement(unittest.TestCase):
         self._test_schur_complements(solver, type="explicit")
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_implicit_schur_complement_adaptive(self):
         preconditioner_type = parapint.linalg.ImplicitSchurComplementPreconditionerType.adaptive_refactorization
         subproblem_solvers = {
@@ -132,8 +137,9 @@ class TestSchurComplement(unittest.TestCase):
         self._test_schur_complements(solver, type="implicit-full")
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_implicit_schur_complement_spilu(self):
         preconditioner_type = (
             parapint.linalg.ImplicitSchurComplementPreconditionerType.incomplete_lu
@@ -152,8 +158,9 @@ class TestSchurComplement(unittest.TestCase):
         self._test_schur_complements(solver, type="implicit-full")
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     @unittest.skipIf(not parapint.linalg.ilupp_is_available(), reason="ilupp package is not available")
     def test_implicit_schur_complement_spich(self):
         preconditioner_type = parapint.linalg.ImplicitSchurComplementPreconditionerType.incomplete_cholesky
@@ -173,8 +180,9 @@ class TestSchurComplement(unittest.TestCase):
         self._test_schur_complements(solver, type="implicit-full")
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_implicit_schur_complement_lbfgs(self):
         preconditioner_type = (
             parapint.linalg.ImplicitSchurComplementPreconditionerType.lbfgs
@@ -195,8 +203,9 @@ class TestSchurComplement(unittest.TestCase):
         self._test_inertia(solver)
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_implicit_schur_complement_block_jacobi(self):
         preconditioner_type = (
             parapint.linalg.ImplicitSchurComplementPreconditionerType.block_jacobi
@@ -222,8 +231,9 @@ class TestSchurComplement(unittest.TestCase):
         self._test_schur_complements(solver, type="implicit-local-bj")
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_implicit_schur_complement_additive_schwarz(self):
         preconditioner_type = (
             parapint.linalg.ImplicitSchurComplementPreconditionerType.additive_schwarz
@@ -250,8 +260,9 @@ class TestSchurComplement(unittest.TestCase):
         # self._test_schur_complements(solver, type='implicit-local-as')
 
     @pytest.mark.parallel
-    @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_implicit_schur_complement_diag_additive_schwarz(self):
         preconditioner_type = parapint.linalg.ImplicitSchurComplementPreconditionerType.diagonal_additive_schwarz
         subproblem_solvers = {
