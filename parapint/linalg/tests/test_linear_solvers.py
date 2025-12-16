@@ -1,12 +1,14 @@
-import unittest
-from pyomo.common.dependencies import attempt_import
-import numpy as np
-import scipy.sparse as sps
-from scipy.sparse import coo_matrix, tril
-import parapint
-import pytest
 import os
+import unittest
+
+import numpy as np
+import pytest
+import scipy.sparse as sps
+from pyomo.common.dependencies import attempt_import
 from pyomo.contrib.pynumero.linalg.ma27 import MA27Interface
+from scipy.sparse import coo_matrix, tril
+
+import parapint
 from parapint.linalg.mkl_pardiso import MKLPardisoInterface
 
 ma27_available = MA27Interface.available()
@@ -54,7 +56,7 @@ def get_schur_complement_matrices(n=10, m=5, seed=0):
     A[:n, n:] = B.A
     A[n:, :n] = B.A.T
     A[n:, n:] = D
-    
+
     S = D - B.T @ np.linalg.inv(H) @ B
 
     A = coo_matrix(A)
@@ -153,7 +155,6 @@ class TestLinearSolvers(unittest.TestCase):
         self._test_inertia_computation(solver)
 
 
-@unittest.skip('This does not work yet')
 class TestWrongNonzeroOrdering(unittest.TestCase):
     def _test_solvers(self, solver, use_tril):
         mat = get_base_matrix(use_tril=use_tril)
@@ -169,14 +170,14 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
     @pytest.mark.fast
     def test_scipy(self):
         solver = parapint.linalg.ScipyInterface()
-        self._test_solvers(solver, use_tril=True)
+        self._test_solvers(solver, use_tril=False)
 
     @pytest.mark.serial
     @pytest.mark.fast
     @unittest.skipIf(not mumps_available, 'mumps is needed for interior point mumps tests')
     def test_mumps(self):
         solver = parapint.linalg.MumpsInterface()
-        self._test_solvers(solver, use_tril=True)
+        self._test_solvers(solver, use_tril=False)
 
     @pytest.mark.serial
     @pytest.mark.fast
@@ -190,7 +191,7 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
     @unittest.skipIf(not mkl_pardiso_available, 'MKL Pardiso is needed for interior point MKL Pardiso tests')
     def test_mkl_pardiso(self):
         solver = parapint.linalg.InteriorPointMKLPardisoInterface()
-        self._test_solvers(solver, use_tril=True)
+        self._test_solvers(solver, use_tril=False)
 
 
 class TestSchurComplementSolver(unittest.TestCase):
