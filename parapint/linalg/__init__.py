@@ -8,5 +8,6 @@ from .schur_complement.explicit_schur_complement import SchurComplementLinearSol
 from .schur_complement.mpi_explicit_schur_complement import MPISchurComplementLinearSolver
 from .schur_complement.mpi_implicit_schur_complement import (
     ImplicitSchurComplementPreconditionerType,
-    make_implicit_schur_complement_solver
+    make_implicit_schur_complement_solver,
+    ilupp_is_available
 )

@@ -154,6 +154,7 @@ class TestSchurComplement(unittest.TestCase):
     @pytest.mark.parallel
     @pytest.mark.fast
     @pytest.mark.all_proc
+    @unittest.skipIf(not parapint.linalg.ilupp_is_available(), reason="ilupp package is not available")
     def test_implicit_schur_complement_spich(self):
         preconditioner_type = parapint.linalg.ImplicitSchurComplementPreconditionerType.incomplete_cholesky
         subproblem_solvers = {

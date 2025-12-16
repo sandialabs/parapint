@@ -1,5 +1,6 @@
 import enum
 import importlib
+import importlib.util
 import inspect
 from abc import abstractmethod
 
@@ -430,6 +431,14 @@ class ImplicitUsingFullSchurComplement(MPIBaseImplicitSchurComplementLinearSolve
         self.schur_complement = self.schur_complement + self.block_matrix.get_block(self.block_dim-1, self.block_dim-1).tocoo()
         timer.stop("form_SC")
 
+
+def ilupp_is_available() -> bool:
+    """Check if a package is available without importing it."""
+    spec = importlib.util.find_spec('ilupp')
+    if spec is None:
+        return False
+    else:
+        return True
 
 class MPISpICholImplicitSchurComplementLinearSolver(ImplicitUsingFullSchurComplement):
     """Implicit Schur complement linear solver using sparse incomplete Cholesky preconditioner."""
