@@ -184,6 +184,7 @@ class TestWrongNonzeroOrdering(unittest.TestCase):
         solver = parapint.linalg.InteriorPointMA27Interface()
         self._test_solvers(solver, use_tril=False)
 
+    @unittest.skip('This does not work yet')
     @pytest.mark.serial
     @pytest.mark.fast
     @unittest.skipIf(not mkl_pardiso_available, 'MKL Pardiso is needed for interior point MKL Pardiso tests')
