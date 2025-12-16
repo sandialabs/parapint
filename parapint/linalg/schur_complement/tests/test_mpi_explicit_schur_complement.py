@@ -18,7 +18,9 @@ size = comm.Get_size()
 class TestSchurComplement(unittest.TestCase):
     @pytest.mark.parallel
     @pytest.mark.fast
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_mpi_schur_complement(self):
         rank_by_index = list()
         for ndx in range(3):
