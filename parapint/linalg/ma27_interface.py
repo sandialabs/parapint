@@ -9,7 +9,7 @@ from pyomo.common.timing import HierarchicalTimer
 class InteriorPointMA27Interface(LinearSolverInterface):
     """
     An interface to HSL's MA27 routines for use with Parapint's interior point algorithm.
-    See http://www.hsl.rl.ac.uk/archive/specs/ma27.pdf for details on the use of MA27.
+    See https://www.hsl.rl.ac.uk/archive-specs/ma27.pdf for details on the use of MA27.
 
     .. note::
        The pivot tolerance, cntl(1), should be selected carefully. Larger values result in better precision but
@@ -18,14 +18,14 @@ class InteriorPointMA27Interface(LinearSolverInterface):
     Parameters
     ----------
     cntl_options: dict
-        See http://www.hsl.rl.ac.uk/archive/specs/ma27.pdf
+        See https://www.hsl.rl.ac.uk/archive-specs/ma27.pdf
     icntl_options: dict
-        See http://www.hsl.rl.ac.uk/archive/specs/ma27.pdf
+        See https://www.hsl.rl.ac.uk/archive-specs/ma27.pdf
     iw_factor: float
         The factor for memory allocation of the integer working arrays used by MA27.
         This value is increased by the increase_memory_allocation method.
     a_factor: float
-        The factor for memory allocation of the A array used by MA28.
+        The factor for memory allocation of the A array used by MA27.
         This value is increased by the increase_memory_allocation_method.
     """
 

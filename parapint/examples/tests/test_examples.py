@@ -87,7 +87,9 @@ class TestExamples(unittest.TestCase):
 
     @pytest.mark.parallel
     @pytest.mark.medium
-    @pytest.mark.all_proc
+    @pytest.mark.one_proc
+    @pytest.mark.two_proc
+    @pytest.mark.three_proc
     def test_schur_complement_psc(self):
         class Args:
             def __init__(self):

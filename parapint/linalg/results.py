@@ -7,8 +7,9 @@ class LinearSolverStatus(enum.Enum):
     singular = 2
     error = 3
     warning = 4
+    none = -1
 
 
 class LinearSolverResults(object):
     def __init__(self):
-        self.status = None
+        self.status = LinearSolverStatus.none
